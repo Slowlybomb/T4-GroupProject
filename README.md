@@ -1,4 +1,4 @@
-# Team 4 Project - Rowing Computer
+# Team 4 Project - Rowing Computer "Gondoilier"
 ### Components of Software:
 
 1) Firmware
