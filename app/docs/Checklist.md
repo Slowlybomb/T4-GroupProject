@@ -12,7 +12,7 @@
 
 ## Database (Supabase Postgres)
 - [x] Create Supabase project
-- [ ] Define schema: users, workouts, sessions, metrics, social/feeds
+- [x] Define schema: users, workouts, sessions, metrics, social/feeds
 - [ ] Choose migrations tool (e.g., `golang-migrate`)
 - [ ] Add initial migration files
 
@@ -50,4 +50,4 @@
 ## Local Dev
 - [ ] Decide local dev approach (hosted Supabase vs local)
 - [ ] Add docker-compose if local DB is needed
-- [ ] Document setup steps in README
+- [ ] Document setup steps in README_APP.md

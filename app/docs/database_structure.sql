@@ -1,3 +1,5 @@
+-- Supabase Database structure.
+
 -- UUID generation and case-insensitive text extensions
 create extension if not exists pgcrypto;
 create extension if not exists citext;
@@ -52,7 +54,7 @@ create table if not exists public.activities (
     check (visibility in ('private', 'followers', 'public', 'team')),
   -- only used if visibility = 'team'
   team_id uuid references public.teams(id) on delete set null,
-  -- GeoJSON LineString for map drawing (coordinates are [lng, lat]), can be null, https://www.postgresql.org/docs/current/datatype-json.html
+  -- GeoJSON LineString for map drawing (coordinates are [lng, lat]), can be null [https://wxww.postgresql.org/docs/current/datatype-json.html]
   -- It appears that PostgreSQL has proper way to store JSON data, it is fast and efficient for storing.
   route_geojson jsonb,
   created_at timestamptz not null default now()
