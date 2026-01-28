@@ -1,10 +1,11 @@
--- Useful for UUID generation
+-- UUID generation and case-insensitive text extensions
 create extension if not exists pgcrypto;
+create extension if not exists citext;
 
 -- 1) PROFILES
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  username text unique not null,
+  username citext unique not null,
   display_name text,
   avatar_url text,
   bio text,
@@ -29,7 +30,8 @@ create table if not exists public.team_members (
   user_id uuid not null references public.profiles(id) on delete cascade,
   role text not null default 'member', -- owner/admin/member
   joined_at timestamptz not null default now(),
-  primary key (team_id, user_id)
+  primary key (team_id, user_id),
+  constraint team_members_role_allowed check (role in ('owner', 'admin', 'member'))
 );
 
 create index if not exists idx_team_members_user on public.team_members(user_id);
@@ -61,8 +63,6 @@ create index if not exists idx_activities_user_time
   on public.activities(user_id, start_time desc);
 create index if not exists idx_activities_team_time
   on public.activities(team_id, start_time desc);
-create index if not exists idx_follows_follower
-  on public.follows(follower_id);
 create index if not exists idx_activities_visibility_time
   on public.activities(visibility, start_time desc);
 
@@ -115,6 +115,8 @@ create table if not exists public.follows (
   constraint follows_no_self check (follower_id <> followed_id)
 );
 
+create index if not exists idx_follows_follower
+  on public.follows(follower_id);
 create index if not exists idx_follows_followed on public.follows(followed_id);
 
 -- 5) LIKES
@@ -139,3 +141,66 @@ create table if not exists public.activity_comments (
 
 create index if not exists idx_activity_comments_activity_time
   on public.activity_comments(activity_id, created_at);
+
+-- Ensure team owner is also a member (role = owner)
+create or replace function public.add_team_owner_member()
+returns trigger
+language plpgsql
+as $$
+begin
+  insert into public.team_members (team_id, user_id, role)
+  values (new.id, new.owner_id, 'owner')
+  on conflict do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_teams_add_owner_member on public.teams;
+create trigger trg_teams_add_owner_member
+after insert on public.teams
+for each row execute function public.add_team_owner_member();
+
+-- RLS: activity visibility (private/followers/team/public)
+alter table public.activities enable row level security;
+
+drop policy if exists activities_select_visibility on public.activities;
+create policy activities_select_visibility on public.activities
+for select
+using (
+  user_id = auth.uid()
+  or visibility = 'public'
+  or (
+    visibility = 'followers'
+    and exists (
+      select 1
+      from public.follows f
+      where f.follower_id = auth.uid()
+        and f.followed_id = public.activities.user_id
+    )
+  )
+  or (
+    visibility = 'team'
+    and exists (
+      select 1
+      from public.team_members tm
+      where tm.team_id = public.activities.team_id
+        and tm.user_id = auth.uid()
+    )
+  )
+);
+
+drop policy if exists activities_insert_own on public.activities;
+create policy activities_insert_own on public.activities
+for insert
+with check (user_id = auth.uid());
+
+drop policy if exists activities_update_own on public.activities;
+create policy activities_update_own on public.activities
+for update
+using (user_id = auth.uid())
+with check (user_id = auth.uid());
+
+drop policy if exists activities_delete_own on public.activities;
+create policy activities_delete_own on public.activities
+for delete
+using (user_id = auth.uid());
