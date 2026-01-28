@@ -1,5 +1,6 @@
 # Team 4 Project - Rowing Computer "Gondoilier"
-### Components of Software:
+
+## Components of Software
 
 1) Firmware
     - Interface with sensors
@@ -21,5 +22,3 @@
     - Possibility for a social aspect with a public feed in the app so that people can share their rows.
 
 This project aims to create a fitness tracker specifically for rowing. Although the technology used is the same across most sports, the tracker could be repurposed for other applications. Using an accelerometer, we will gather data about the movement of the boat and put that into a trained tensor model, which will detect rowing strokes. We will extrapolate important information for the rower, and this will be presented on a nice UI on the device's screen. GPS data might be used to augment this if we have enough time to implement it. Paired with this will be a phone or desktop application where users can view the data of their rowing workout in more detail and interact with a social feed where they can post or view others' workouts. The device will communicate with the phone and or computer using wifi or Bluetooth, using direct peer-to-peer data transfer.
-
-

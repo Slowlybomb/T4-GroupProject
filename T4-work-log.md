@@ -42,3 +42,5 @@
         4) Emin - AI
         5) Hleb - Backend
         6) David - Frontend
+
+## Week 2: 26/01/2026 - 27/01/2026
