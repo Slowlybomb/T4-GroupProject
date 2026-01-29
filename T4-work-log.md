@@ -43,4 +43,15 @@
         5) Hleb - Backend
         6) David - Frontend
 
-## Week 2: 26/01/2026 - 27/01/2026
+## Week 3: 26/01/2026 - 27/01/2026
+
+### Discord call 27/01/2026
+- David started working on design
+- Hleb worked on database design and app architecture.
+
+### Team meeting  28/01/2026
+- Discussed database design.
+- Mark raised the question about Bluetooth connection and protocols used to send data to app.
+- The rowing computer was seen for the first time.
+- Keras could be used to make life easier during AI development.
+- Major problem of slow data writing on SD card
