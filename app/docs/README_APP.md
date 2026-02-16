@@ -22,3 +22,21 @@ From `app/` directory:
 ```bash
 make migrate-version
 ```
+
+## Testing Quick Check
+
+From repo root:
+
+```bash
+# Go API tests (main.go + helpers)
+cd app/api
+go test ./...
+go vet ./...
+go build ./cmd/server
+
+# Flutter checks
+cd ../flutter_app
+flutter pub get
+flutter analyze
+flutter test
+```

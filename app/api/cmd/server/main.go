@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -19,23 +20,43 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Activity struct {
-	ID        int       `json:"id"`
-	User      string    `json:"user" binding:"required,min=2"`
-	Title     string    `json:"title" binding:"required,min=3"`
-	Type      string    `json:"type" binding:"required,oneof=run walk gym cycle"`
-	Minutes   int       `json:"minutes" binding:"required,gte=1,lte=600"`
-	Likes     int       `json:"likes"`
-	CreatedAt time.Time `json:"created_at"`
+	// This shape mirrors public.activities + derived counters (likes/comments).
+	// Pointer fields represent nullable DB columns.
+	ID                  string          `json:"id"`
+	UserID              string          `json:"user_id"`
+	Title               *string         `json:"title,omitempty"`
+	Notes               *string         `json:"notes,omitempty"`
+	StartTime           time.Time       `json:"start_time"`
+	DurationSeconds     *int32          `json:"duration_seconds,omitempty"`
+	DistanceM           *float64        `json:"distance_m,omitempty"`
+	AvgSplit500MSeconds *int32          `json:"avg_split_500m_seconds,omitempty"`
+	AvgStrokeSPM        *int16          `json:"avg_stroke_spm,omitempty"`
+	Visibility          string          `json:"visibility"`
+	TeamID              *string         `json:"team_id,omitempty"`
+	RouteGeoJSON        json.RawMessage `json:"route_geojson,omitempty"`
+	Likes               int             `json:"likes"`
+	Comments            int             `json:"comments"`
+	CreatedAt           time.Time       `json:"created_at"`
 }
 
-// Keep request payload separate so clients cannot set server-managed fields (id, user, likes, created_at).
+// Keep request payload separate so clients cannot set server-managed fields (id, user_id, likes, comments, created_at).
 type CreateActivityRequest struct {
-	Title   string `json:"title" binding:"required,min=3"`
-	Type    string `json:"type" binding:"required,oneof=run walk gym cycle"`
-	Minutes int    `json:"minutes" binding:"required,gte=1,lte=600"`
+	// We accept nullable fields to match database columns and avoid inventing defaults in API code.
+	Title               *string         `json:"title" binding:"omitempty,max=120"`
+	Notes               *string         `json:"notes" binding:"omitempty,max=5000"`
+	StartTime           time.Time       `json:"start_time" binding:"required"`
+	DurationSeconds     *int32          `json:"duration_seconds" binding:"omitempty,gte=0"`
+	DistanceM           *float64        `json:"distance_m" binding:"omitempty,gte=0"`
+	AvgSplit500MSeconds *int32          `json:"avg_split_500m_seconds" binding:"omitempty,gte=0"`
+	AvgStrokeSPM        *int16          `json:"avg_stroke_spm" binding:"omitempty,gte=0"`
+	Visibility          string          `json:"visibility" binding:"required,oneof=private followers public team"`
+	TeamID              *string         `json:"team_id" binding:"omitempty,uuid"`
+	RouteGeoJSON        json.RawMessage `json:"route_geojson"`
 }
 
 // authConfig holds necessary info to verify JWTs against Supabase's JWKS endpoint.
@@ -46,9 +67,20 @@ type authConfig struct {
 	HTTPDelay time.Duration
 }
 
+type activityService interface {
+	list(ctx context.Context, userID string) ([]Activity, error)
+	create(ctx context.Context, userID string, req CreateActivityRequest) (Activity, error)
+	get(ctx context.Context, userID, activityID string) (Activity, bool, error)
+	like(ctx context.Context, userID, activityID string) (Activity, bool, error)
+}
+
+// main is the app entry point.
+// It wires middleware, auth, storage, and routes, then starts the HTTP server.
 func main() {
 	r := gin.New()
+	// Recovery avoids crashing the whole process if one request panics.
 	r.Use(gin.Recovery())
+	// Small custom logger that writes request duration as a response header.
 	r.Use(requestLogger())
 
 	authMiddleware, err := newAuthMiddlewareFromEnv()
@@ -56,8 +88,24 @@ func main() {
 		log.Fatalf("auth middleware setup failed: %v", err)
 	}
 
-	store := newActivityStore()
+	store, err := newActivityStoreFromEnv(context.Background())
+	if err != nil {
+		// Fail fast if DB is unavailable; activities endpoints depend on it.
+		log.Fatalf("activity store setup failed: %v", err)
+	}
+	defer store.close()
 
+	registerRoutes(r, authMiddleware, store)
+
+	// Default port is 8080.
+	if err := r.Run(":8080"); err != nil {
+		log.Fatalf("server failed to start: %v", err)
+	}
+}
+
+// registerRoutes groups all API endpoint wiring so tests can build a router
+// with fake middleware/store implementations.
+func registerRoutes(r *gin.Engine, authMiddleware gin.HandlerFunc, store activityService) {
 	api := r.Group("/api/v1")
 	{
 		// Health stays public so uptime checks do not need a JWT.
@@ -73,10 +121,25 @@ func main() {
 		activities.Use(authMiddleware)
 
 		activities.GET("", func(c *gin.Context) {
-			c.JSON(http.StatusOK, store.list())
+			// user_id comes from JWT "sub" set by auth middleware.
+			userID, ok := authUserID(c)
+			if !ok {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authenticated user"})
+				return
+			}
+
+			activities, err := store.list(c.Request.Context(), userID)
+			if err != nil {
+				log.Printf("list activities failed: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+				return
+			}
+
+			c.JSON(http.StatusOK, activities)
 		})
 
 		activities.POST("", func(c *gin.Context) {
+			// Bind + validate JSON according to tags on CreateActivityRequest.
 			var req CreateActivityRequest
 			if err := c.ShouldBindJSON(&req); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -86,24 +149,68 @@ func main() {
 				return
 			}
 
+			if req.TeamID != nil {
+				// Normalize team_id to avoid accepting whitespace-only values.
+				trimmedTeamID := strings.TrimSpace(*req.TeamID)
+				if trimmedTeamID == "" {
+					req.TeamID = nil
+				} else {
+					req.TeamID = &trimmedTeamID
+				}
+			}
+
+			if req.Visibility == "team" && req.TeamID == nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "team_id is required when visibility is team"})
+				return
+			}
+			// Keep request semantics aligned with DB constraint:
+			// team_id must be present only for team visibility.
+			if req.Visibility != "team" && req.TeamID != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "team_id is only allowed when visibility is team"})
+				return
+			}
+
+			if len(req.RouteGeoJSON) > 0 && !json.Valid(req.RouteGeoJSON) {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "route_geojson must be valid JSON"})
+				return
+			}
+
 			userID, ok := authUserID(c)
 			if !ok {
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authenticated user"})
 				return
 			}
 
-			a := store.create(userID, req.Title, req.Type, req.Minutes)
+			a, err := store.create(c.Request.Context(), userID, req)
+			if err != nil {
+				log.Printf("create activity failed: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+				return
+			}
+
 			c.JSON(http.StatusCreated, a)
 		})
 
 		activities.GET("/:id", func(c *gin.Context) {
-			id, ok := parseID(c.Param("id"))
+			// Route id is a UUID now (old prototype used integer IDs).
+			id, ok := parseActivityID(c.Param("id"))
 			if !ok {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "id must be an integer"})
+				c.JSON(http.StatusBadRequest, gin.H{"error": "id must be a UUID"})
 				return
 			}
 
-			a, found := store.get(id)
+			userID, ok := authUserID(c)
+			if !ok {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authenticated user"})
+				return
+			}
+
+			a, found, err := store.get(c.Request.Context(), userID, id)
+			if err != nil {
+				log.Printf("get activity failed: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+				return
+			}
 			if !found {
 				c.JSON(http.StatusNotFound, gin.H{"error": "activity not found"})
 				return
@@ -113,13 +220,24 @@ func main() {
 		})
 
 		activities.PATCH("/:id/like", func(c *gin.Context) {
-			id, ok := parseID(c.Param("id"))
+			id, ok := parseActivityID(c.Param("id"))
 			if !ok {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "id must be an integer"})
+				c.JSON(http.StatusBadRequest, gin.H{"error": "id must be a UUID"})
 				return
 			}
 
-			a, found := store.like(id)
+			userID, ok := authUserID(c)
+			if !ok {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authenticated user"})
+				return
+			}
+
+			a, found, err := store.like(c.Request.Context(), userID, id)
+			if err != nil {
+				log.Printf("like activity failed: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+				return
+			}
 			if !found {
 				c.JSON(http.StatusNotFound, gin.H{"error": "activity not found"})
 				return
@@ -128,12 +246,13 @@ func main() {
 			c.JSON(http.StatusOK, a)
 		})
 	}
-
-	if err := r.Run(":8080"); err != nil {
-		log.Fatalf("server failed to start: %v", err)
-	}
 }
 
+// newAuthMiddlewareFromEnv builds JWT auth middleware from env config.
+// The middleware:
+// 1) reads bearer token,
+// 2) verifies token signature + claims,
+// 3) stores user info in Gin context.
 func newAuthMiddlewareFromEnv() (gin.HandlerFunc, error) {
 	cfg, err := readAuthConfigFromEnv()
 	if err != nil {
@@ -173,6 +292,9 @@ func newAuthMiddlewareFromEnv() (gin.HandlerFunc, error) {
 	}, nil
 }
 
+// readAuthConfigFromEnv collects required auth settings from env vars.
+// SUPABASE_JWKS_URL is required.
+// JWT_AUDIENCE defaults to "authenticated" if not set.
 func readAuthConfigFromEnv() (authConfig, error) {
 	cfg := authConfig{
 		JWKSURL:   strings.TrimSpace(os.Getenv("SUPABASE_JWKS_URL")),
@@ -196,6 +318,8 @@ func readAuthConfigFromEnv() (authConfig, error) {
 	return cfg, nil
 }
 
+// jwksProvider caches RSA public keys from Supabase JWKS endpoint.
+// This avoids calling the remote JWKS URL on every request.
 type jwksProvider struct {
 	url    string
 	client *http.Client
@@ -227,6 +351,8 @@ func newJWKSProvider(url string, timeout time.Duration) *jwksProvider {
 	}
 }
 
+// lookupKey gets a public key by kid.
+// If key is missing, it refreshes JWKS once and retries.
 func (p *jwksProvider) lookupKey(kid string) (*rsa.PublicKey, error) {
 	p.mu.RLock()
 	key, ok := p.keys[kid]
@@ -248,6 +374,7 @@ func (p *jwksProvider) lookupKey(kid string) (*rsa.PublicKey, error) {
 	return key, nil
 }
 
+// refresh downloads and parses JWKS into an in-memory key map.
 func (p *jwksProvider) refresh(ctx context.Context) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.url, nil)
 	if err != nil {
@@ -292,6 +419,7 @@ func (p *jwksProvider) refresh(ctx context.Context) error {
 	return nil
 }
 
+// parseRSAPublicKey converts JWK n/e fields (base64url) into rsa.PublicKey.
 func parseRSAPublicKey(nRaw, eRaw string) (*rsa.PublicKey, error) {
 	modulusBytes, err := base64.RawURLEncoding.DecodeString(nRaw)
 	if err != nil {
@@ -326,6 +454,12 @@ type jwtHeader struct {
 	Typ string `json:"typ"`
 }
 
+// verifyJWT performs manual JWT verification:
+// - split token,
+// - decode header,
+// - fetch public key by kid,
+// - verify RS256 signature,
+// - decode claims and validate them.
 func verifyJWT(
 	token string,
 	cfg authConfig,
@@ -385,6 +519,7 @@ func verifyJWT(
 	return claims, nil
 }
 
+// validateClaims checks exp/nbf/iat and optional iss/aud constraints.
 func validateClaims(claims map[string]any, cfg authConfig, now time.Time) error {
 	nowUnix := now.Unix()
 	const leewaySeconds int64 = 30
@@ -420,6 +555,7 @@ func validateClaims(claims map[string]any, cfg authConfig, now time.Time) error 
 	return nil
 }
 
+// numericClaim converts common JSON number formats into int64.
 func numericClaim(v any) (int64, bool) {
 	switch n := v.(type) {
 	case float64:
@@ -447,6 +583,7 @@ func numericClaim(v any) (int64, bool) {
 	}
 }
 
+// audienceContains supports "aud" as string or array.
 func audienceContains(raw any, expected string) bool {
 	switch aud := raw.(type) {
 	case string:
@@ -471,6 +608,7 @@ func audienceContains(raw any, expected string) bool {
 	}
 }
 
+// extractBearerToken parses "Authorization: Bearer <token>".
 func extractBearerToken(header string) (string, bool) {
 	if len(header) < len("Bearer ") {
 		return "", false
@@ -487,14 +625,45 @@ func extractBearerToken(header string) (string, bool) {
 	return token, true
 }
 
-func parseID(raw string) (int, bool) {
-	id, err := strconv.Atoi(raw)
-	if err != nil || id <= 0 {
-		return 0, false
+func parseActivityID(raw string) (string, bool) {
+	// Cheap UUID syntax check for route params without extra dependencies.
+	id := strings.TrimSpace(raw)
+	if len(id) != 36 {
+		return "", false
 	}
-	return id, true
+
+	for i := 0; i < len(id); i++ {
+		ch := id[i]
+		switch i {
+		case 8, 13, 18, 23:
+			if ch != '-' {
+				return "", false
+			}
+		default:
+			if !isHex(ch) {
+				return "", false
+			}
+		}
+	}
+
+	return strings.ToLower(id), true
 }
 
+// isHex returns true when a byte is [0-9a-fA-F].
+func isHex(ch byte) bool {
+	switch {
+	case ch >= '0' && ch <= '9':
+		return true
+	case ch >= 'a' && ch <= 'f':
+		return true
+	case ch >= 'A' && ch <= 'F':
+		return true
+	default:
+		return false
+	}
+}
+
+// authUserID fetches the authenticated user id from Gin context.
 func authUserID(c *gin.Context) (string, bool) {
 	raw, ok := c.Get("auth.user_id")
 	if !ok {
@@ -514,6 +683,7 @@ func authUserID(c *gin.Context) (string, bool) {
 	return userID, true
 }
 
+// requestLogger adds X-Request-Duration so latency is visible in responses.
 func requestLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -525,68 +695,327 @@ func requestLogger() gin.HandlerFunc {
 	}
 }
 
-/*
-	In-memory store.
-	Not thread-safe.
-	For a prototype it's fine.
-	For production, you'd use a DB + proper concurrency control.
-*/
+// Common SELECT projection used by list/get/create return paths.
+const activitySelectColumns = `
+a.id::text,
+a.user_id::text,
+a.title,
+a.notes,
+a.start_time,
+a.duration_seconds,
+a.distance_m,
+a.avg_split_500m_seconds,
+a.avg_stroke_spm,
+a.visibility,
+a.team_id::text,
+a.route_geojson,
+a.created_at,
+coalesce((select count(*) from public.activity_likes l where l.activity_id = a.id), 0)::int,
+coalesce((select count(*) from public.activity_comments c where c.activity_id = a.id), 0)::int
+`
 
+const listActivitiesQuery = `
+-- List own activities and public activities for feed-like behavior.
+select ` + activitySelectColumns + `
+from public.activities a
+where a.user_id = $1::uuid
+   or a.visibility = 'public'
+order by a.start_time desc
+limit 100
+`
+
+const getActivityQuery = `
+-- Fetch a single activity if visible to requester.
+select ` + activitySelectColumns + `
+from public.activities a
+where a.id = $2::uuid
+  and (a.user_id = $1::uuid or a.visibility = 'public')
+limit 1
+`
+
+const createActivityQuery = `
+-- Insert first, then re-select with computed counters so API shape is consistent.
+with inserted as (
+	insert into public.activities (
+		user_id,
+		title,
+		notes,
+		start_time,
+		duration_seconds,
+		distance_m,
+		avg_split_500m_seconds,
+		avg_stroke_spm,
+		visibility,
+		team_id,
+		route_geojson
+	)
+	values (
+		$1::uuid,
+		$2,
+		$3,
+		$4,
+		$5,
+		$6,
+		$7,
+		$8,
+		$9,
+		$10::uuid,
+		$11::jsonb
+	)
+	returning id
+)
+select ` + activitySelectColumns + `
+from public.activities a
+join inserted i on i.id = a.id
+`
+
+const ensureProfileQuery = `
+-- Activities.user_id references profiles.id, so we create a minimal profile row
+-- for first-time users if it does not exist yet.
+insert into public.profiles (id, username)
+values ($1::uuid, $2)
+on conflict (id) do nothing
+`
+
+const insertLikeQuery = `
+insert into public.activity_likes (user_id, activity_id)
+values ($1::uuid, $2::uuid)
+on conflict do nothing
+`
+
+// activityStore is a small repository around pgxpool.
 type activityStore struct {
-	nextID     int
-	activities map[int]Activity
-	order      []int
+	pool *pgxpool.Pool
 }
 
-func newActivityStore() *activityStore {
-	s := &activityStore{
-		nextID:     1,
-		activities: make(map[int]Activity),
-		order:      make([]int, 0, 64),
+func newActivityStoreFromEnv(ctx context.Context) (*activityStore, error) {
+	// Reuse one pool for all handlers; pgxpool manages internal connection concurrency.
+	databaseURL, err := readDatabaseURLFromEnv()
+	if err != nil {
+		return nil, err
 	}
 
-	// Seed a couple of examples so your API isn't empty on boot.
-	s.create("hleb", "Evening run", "run", 35)
-	s.create("alex", "Leg day", "gym", 55)
-
-	return s
-}
-
-func (s *activityStore) create(user, title, typ string, minutes int) Activity {
-	a := Activity{
-		ID:        s.nextID,
-		User:      user,
-		Title:     title,
-		Type:      typ,
-		Minutes:   minutes,
-		Likes:     0,
-		CreatedAt: time.Now().UTC(),
+	poolConfig, err := pgxpool.ParseConfig(databaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse database url: %w", err)
 	}
-	s.activities[a.ID] = a
-	s.order = append(s.order, a.ID)
-	s.nextID++
-	return a
-}
 
-func (s *activityStore) list() []Activity {
-	out := make([]Activity, 0, len(s.order))
-	for _, id := range s.order {
-		out = append(out, s.activities[id])
+	connectCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	pool, err := pgxpool.NewWithConfig(connectCtx, poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("connect to database: %w", err)
 	}
-	return out
-}
 
-func (s *activityStore) get(id int) (Activity, bool) {
-	a, ok := s.activities[id]
-	return a, ok
-}
-
-func (s *activityStore) like(id int) (Activity, bool) {
-	a, ok := s.activities[id]
-	if !ok {
-		return Activity{}, false
+	if err := pool.Ping(connectCtx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("ping database: %w", err)
 	}
-	a.Likes++
-	s.activities[id] = a
-	return a, true
+
+	return &activityStore{pool: pool}, nil
+}
+
+// readDatabaseURLFromEnv supports either DATABASE_URL or DB_URL.
+func readDatabaseURLFromEnv() (string, error) {
+	if databaseURL := strings.TrimSpace(os.Getenv("DATABASE_URL")); databaseURL != "" {
+		return databaseURL, nil
+	}
+	if databaseURL := strings.TrimSpace(os.Getenv("DB_URL")); databaseURL != "" {
+		return databaseURL, nil
+	}
+	return "", errors.New("DATABASE_URL or DB_URL is required")
+}
+
+// close closes the shared pgx pool on shutdown.
+func (s *activityStore) close() {
+	if s == nil || s.pool == nil {
+		return
+	}
+	s.pool.Close()
+}
+
+// list returns activities visible to the current user.
+func (s *activityStore) list(ctx context.Context, userID string) ([]Activity, error) {
+	// Read path: query + scan into API model.
+	rows, err := s.pool.Query(ctx, listActivitiesQuery, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	activities := make([]Activity, 0, 32)
+	for rows.Next() {
+		activity, err := scanActivity(rows)
+		if err != nil {
+			return nil, err
+		}
+		activities = append(activities, activity)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return activities, nil
+}
+
+// create inserts a new activity and returns the inserted row in API shape.
+func (s *activityStore) create(ctx context.Context, userID string, req CreateActivityRequest) (Activity, error) {
+	// Ensure FK target exists before insert into activities.
+	if err := s.ensureProfile(ctx, userID); err != nil {
+		return Activity{}, err
+	}
+
+	var routeJSON any
+	if len(req.RouteGeoJSON) > 0 {
+		routeJSON = req.RouteGeoJSON
+	}
+
+	row := s.pool.QueryRow(
+		ctx,
+		createActivityQuery,
+		userID,
+		req.Title,
+		req.Notes,
+		req.StartTime.UTC(),
+		req.DurationSeconds,
+		req.DistanceM,
+		req.AvgSplit500MSeconds,
+		req.AvgStrokeSPM,
+		req.Visibility,
+		req.TeamID,
+		routeJSON,
+	)
+
+	activity, err := scanActivity(row)
+	if err != nil {
+		return Activity{}, err
+	}
+	return activity, nil
+}
+
+// get reads one activity if requester is allowed to see it.
+func (s *activityStore) get(ctx context.Context, userID, activityID string) (Activity, bool, error) {
+	row := s.pool.QueryRow(ctx, getActivityQuery, userID, activityID)
+	activity, err := scanActivity(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Activity{}, false, nil
+		}
+		return Activity{}, false, err
+	}
+	return activity, true, nil
+}
+
+// like does an idempotent like insert, then returns updated counters.
+func (s *activityStore) like(ctx context.Context, userID, activityID string) (Activity, bool, error) {
+	// We check visibility first, then idempotently insert like, then return fresh counters.
+	if _, found, err := s.get(ctx, userID, activityID); err != nil || !found {
+		return Activity{}, found, err
+	}
+
+	if _, err := s.pool.Exec(ctx, insertLikeQuery, userID, activityID); err != nil {
+		return Activity{}, false, err
+	}
+
+	activity, found, err := s.get(ctx, userID, activityID)
+	if err != nil || !found {
+		return Activity{}, found, err
+	}
+
+	return activity, true, nil
+}
+
+// ensureProfile creates a minimal profile row so activities FK can reference it.
+// Username is deterministic and based on user id.
+func (s *activityStore) ensureProfile(ctx context.Context, userID string) error {
+	username := "user_" + strings.ReplaceAll(strings.ToLower(userID), "-", "")
+	_, err := s.pool.Exec(ctx, ensureProfileQuery, userID, username)
+	return err
+}
+
+// scanActivity maps one DB row into Activity struct.
+// It handles nullable DB values with sql.Null* wrappers.
+func scanActivity(scanner interface{ Scan(dest ...any) error }) (Activity, error) {
+	// sql.Null* keeps null semantics explicit while scanning optional DB columns.
+	var (
+		activity            Activity
+		title               sql.NullString
+		notes               sql.NullString
+		durationSeconds     sql.NullInt32
+		distanceM           sql.NullFloat64
+		avgSplit500mSeconds sql.NullInt32
+		avgStrokeSPM        sql.NullInt16
+		teamID              sql.NullString
+		routeGeoJSON        []byte
+		likes               int32
+		comments            int32
+	)
+
+	if err := scanner.Scan(
+		&activity.ID,
+		&activity.UserID,
+		&title,
+		&notes,
+		&activity.StartTime,
+		&durationSeconds,
+		&distanceM,
+		&avgSplit500mSeconds,
+		&avgStrokeSPM,
+		&activity.Visibility,
+		&teamID,
+		&routeGeoJSON,
+		&activity.CreatedAt,
+		&likes,
+		&comments,
+	); err != nil {
+		return Activity{}, err
+	}
+
+	if title.Valid {
+		activity.Title = stringPtr(title.String)
+	}
+	if notes.Valid {
+		activity.Notes = stringPtr(notes.String)
+	}
+	if durationSeconds.Valid {
+		activity.DurationSeconds = int32Ptr(durationSeconds.Int32)
+	}
+	if distanceM.Valid {
+		activity.DistanceM = float64Ptr(distanceM.Float64)
+	}
+	if avgSplit500mSeconds.Valid {
+		activity.AvgSplit500MSeconds = int32Ptr(avgSplit500mSeconds.Int32)
+	}
+	if avgStrokeSPM.Valid {
+		activity.AvgStrokeSPM = int16Ptr(avgStrokeSPM.Int16)
+	}
+	if teamID.Valid {
+		activity.TeamID = stringPtr(teamID.String)
+	}
+	if len(routeGeoJSON) > 0 {
+		activity.RouteGeoJSON = append(json.RawMessage(nil), routeGeoJSON...)
+	}
+
+	activity.Likes = int(likes)
+	activity.Comments = int(comments)
+
+	return activity, nil
+}
+
+// Small pointer helpers keep scan-to-API mapping readable.
+func stringPtr(v string) *string {
+	return &v
+}
+
+func int32Ptr(v int32) *int32 {
+	return &v
+}
+
+func int16Ptr(v int16) *int16 {
+	return &v
+}
+
+func float64Ptr(v float64) *float64 {
+	return &v
 }

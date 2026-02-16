@@ -33,9 +33,9 @@
 
 ## API Contract
 
-- [ ] Define core endpoints: users, workouts, sessions, feed, metrics, files
-- [ ] Create OpenAPI/Swagger or shared DTOs
-- [ ] Add request/response validation
+- [x] Define core endpoints: users, workouts, sessions, feed, metrics, files
+- [x] Create OpenAPI/Swagger or shared DTOs
+- [x] Add request/response validation
 
 ## Realtime (WebSockets)
 
@@ -59,8 +59,8 @@
 ## Hosting + CI/CD
 
 - [x] Choose hosting target (Fly.io or Render)
-- [ ] Add build/deploy pipelines for Go API
-- [ ] Add lint/test workflows for Go + Flutter
+- [x] Add build/deploy pipelines for Go API
+- [x] Add lint/test workflows for Go + Flutter
 
 ## Local Dev
 
