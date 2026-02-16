@@ -108,6 +108,115 @@ Notes:
 - `postgresql://...` URLs are normalized to `postgres://...` for `golang-migrate`.
 - If your DB password has special characters (`!`, `@`, `#`, etc.), URL-encode them in `DATABASE_URL`.
 
+## 4. Testing Guide (App, Database, and `main.go`)
+
+### 4.1 Flutter App Tests
+
+From repo root:
+
+```bash
+cd app/flutter_app
+flutter pub get
+flutter analyze
+flutter test
+```
+
+Manual app run:
+
+```bash
+flutter run
+```
+
+What this checks:
+- `flutter analyze`: lint/static analysis for Dart code.
+- `flutter test`: widget/unit tests (as they are added).
+- `flutter run`: manual smoke testing on emulator/device.
+
+### 4.2 Go API (`main.go`) Tests
+
+From repo root:
+
+```bash
+cd app/api
+go test ./cmd/server -v
+go test ./...
+go vet ./...
+go build ./cmd/server
+```
+
+Current server tests are in:
+- `app/api/cmd/server/handlers_test.go` (HTTP handlers and route behavior)
+- `app/api/cmd/server/auth_test.go` (auth/JWT helper logic)
+- `app/api/cmd/server/repository_test.go` (repository/env/scan logic)
+
+### 4.3 Manual API Smoke Test for `main.go`
+
+1. Ensure `app/api/.env.dev` has valid `DATABASE_URL`, `SUPABASE_URL`, and auth settings.
+2. Start API:
+
+```bash
+cd app
+make api-run
+```
+
+3. Public endpoint check:
+
+```bash
+curl -i http://localhost:8080/api/v1/health
+```
+
+4. Protected endpoint check (with real Supabase access token):
+
+```bash
+curl -i \
+  -H "Authorization: Bearer <access_token>" \
+  http://localhost:8080/api/v1/activities
+```
+
+5. Create activity check:
+
+```bash
+curl -i -X POST http://localhost:8080/api/v1/activities \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title":"Smoke test row",
+    "start_time":"2026-01-01T10:00:00Z",
+    "visibility":"public"
+  }'
+```
+
+### 4.4 Database Checks
+
+From repo root:
+
+```bash
+cd app
+make migrate-version
+make migrate-up
+make migrate-down
+```
+
+Recommended safety:
+- Use a development database for migration testing.
+- Do not run `migrate-down` on production unless explicitly planned.
+
+Optional schema check (if `psql` is installed):
+
+```bash
+psql "$DATABASE_URL" -c "\dt public.*"
+psql "$DATABASE_URL" -c "select count(*) from public.activities;"
+```
+
+### 4.5 CI Pipelines
+
+GitHub Actions workflows:
+- `/.github/workflows/ci.yml`
+  - Go: test, vet, build
+  - Flutter: pub get, analyze, test
+- `/.github/workflows/deploy-go-api.yml`
+  - Go build + optional Render deploy hook (`RENDER_DEPLOY_HOOK_URL` secret)
+
 ## Troubleshooting
 
 ### No `pubspec.yaml file found`
