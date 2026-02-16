@@ -10,6 +10,8 @@ jobs:
   build-and-deploy:
     name: Build and Deploy (Render)
     runs-on: ubuntu-latest
+    env:
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
     defaults:
       run:
         working-directory: app/api
@@ -27,9 +29,9 @@ jobs:
         run: go build ./cmd/server
 
       - name: Trigger Render Deploy Hook
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
+        if: ${{ env.RENDER_DEPLOY_HOOK_URL != '' }}
         run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
 
       - name: Deploy hook not configured
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL == '' }}
+        if: ${{ env.RENDER_DEPLOY_HOOK_URL == '' }}
         run: echo "RENDER_DEPLOY_HOOK_URL secret is not set; build passed, deploy skipped."
