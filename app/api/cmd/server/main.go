@@ -31,11 +31,7 @@ type Activity struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-<<<<<<< HEAD
 // Keep request payload separate so clients cannot set server-managed fields (id, user, likes, created_at).
-=======
-// Keep request payload separate so clients cannot set server-managed fields (id, likes, created_at).
->>>>>>> 49ff1cc443b9d22c71853a2cdd98444c833a9cbf
 type CreateActivityRequest struct {
 	Title   string `json:"title" binding:"required,min=3"`
 	Type    string `json:"type" binding:"required,oneof=run walk gym cycle"`
