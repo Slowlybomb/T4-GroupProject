@@ -1,5 +1,11 @@
 # App Local Setup Notes
 
+## Links to services
+
+["Supabase" Database](https://supabase.com/dashboard/project/jbctntbyagqowvfegren)
+
+["Render" Hosting Platform](https://link-url-here.org)
+
 This file records the current app local development setup.
 For full step-by-step commands, see `app/docs/README.md`.
 
