@@ -99,6 +99,9 @@ func main() {
 
 	// Render provides PORT; default to 8080 for local.
 	port := strings.TrimSpace(os.Getenv("PORT"))
+	if port != "" {
+		log.Printf("starting server on port %s", port)
+	}
 	if port == "" {
 		port = "8080"
 	}
