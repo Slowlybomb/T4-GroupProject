@@ -97,8 +97,12 @@ func main() {
 
 	registerRoutes(r, authMiddleware, store)
 
-	// Default port is 8080.
-	if err := r.Run(":8080"); err != nil {
+	// Render provides PORT; default to 8080 for local development.
+	port := strings.TrimSpace(os.Getenv("PORT"))
+	if port == "" {
+		port = "8080"
+	}
+	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("server failed to start: %v", err)
 	}
 }
