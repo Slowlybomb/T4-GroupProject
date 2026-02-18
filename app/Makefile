@@ -8,6 +8,8 @@ include $(ENV_FILE)
 endif
 
 DB_URL ?= $(DATABASE_URL)
+# Export runtime env so `make api-run` passes .env.dev values to `go run`.
+export DATABASE_URL DB_URL SUPABASE_URL SUPABASE_JWKS_URL JWT_AUDIENCE JWT_ISSUER SUPABASE_SERVICE_ROLE_KEY SUPABASE_ANON_KEY
 MIGRATE_DB_URL = $(if $(filter postgresql://%,$(DB_URL)),$(patsubst postgresql://%,postgres://%,$(DB_URL)),$(DB_URL))
 MIGRATE_CMD := go run -tags postgres github.com/golang-migrate/migrate/v4/cmd/migrate@v4.18.3
 
