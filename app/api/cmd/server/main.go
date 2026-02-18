@@ -97,7 +97,7 @@ func main() {
 
 	registerRoutes(r, authMiddleware, store)
 
-	// Render provides PORT; default to 8080 for local development.
+	// Render provides PORT; default to 8080 for local.
 	port := strings.TrimSpace(os.Getenv("PORT"))
 	if port == "" {
 		port = "8080"
