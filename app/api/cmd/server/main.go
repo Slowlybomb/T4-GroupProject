@@ -102,6 +102,7 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("server failed to start: %v", err)
 	}
