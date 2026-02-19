@@ -20,6 +20,8 @@ profile.cov
 # Dependency directories (remove the comment below to include it)
 vendor/
 app/api/bin/
+app/api/.cache/
+app/api/server
 
 # Go workspace file
 go.work

@@ -51,6 +51,18 @@ Or if your shell is already in `app/`:
 make api-run
 ```
 
+The Makefile auto-loads `app/api/.env.dev` if it exists.
+
+Required API env vars:
+- `DATABASE_URL` (or `DB_URL`)
+- `SUPABASE_JWKS_URL`
+
+Optional API env vars:
+- `SUPABASE_URL` (used to derive issuer if `JWT_ISSUER` is not set)
+- `JWT_ISSUER` (explicit JWT issuer)
+- `JWT_AUDIENCE` (defaults to `authenticated`)
+- `PORT` (defaults to `8080`)
+
 Other useful targets:
 
 ```bash
@@ -66,6 +78,15 @@ make api-test
 make api-vet
 make api-build
 ```
+
+Build and start the compiled binary:
+
+```bash
+make -C app api-build
+make -C app api-start
+```
+
+The compiled binary path is `app/api/bin/server`.
 
 ## 3. Database Migrations (golang-migrate)
 
@@ -151,32 +172,39 @@ Current server tests are in:
 
 ### 4.3 Manual API Smoke Test for `main.go`
 
-1. Ensure `app/api/.env.dev` has valid `DATABASE_URL`, `SUPABASE_URL`, and auth settings.
-2. Start API:
+1. Ensure `app/api/.env.dev` has valid `DATABASE_URL` (or `DB_URL`) and `SUPABASE_JWKS_URL`.
+2. Set the API port to match `PORT` in `.env.dev` (default is `8080`):
+
+```bash
+API_PORT=4000
+```
+
+3. Start API:
 
 ```bash
 cd app
 make api-run
 ```
 
-3. Public endpoint check:
+4. Public endpoint check:
 
 ```bash
-curl -i http://localhost:8080/api/v1/health
+curl -i "http://localhost:${API_PORT}/health"
+curl -i "http://localhost:${API_PORT}/api/v1/health"
 ```
 
-4. Protected endpoint check (with real Supabase access token):
+5. Protected endpoint check (with real Supabase access token):
 
 ```bash
 curl -i \
   -H "Authorization: Bearer <access_token>" \
-  http://localhost:8080/api/v1/activities
+  "http://localhost:${API_PORT}/api/v1/activities"
 ```
 
-5. Create activity check:
+6. Create activity check:
 
 ```bash
-curl -i -X POST http://localhost:8080/api/v1/activities \
+curl -i -X POST "http://localhost:${API_PORT}/api/v1/activities" \
   -H "Authorization: Bearer <access_token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -246,6 +274,14 @@ From repo root, use:
 ```bash
 make -C app migrate-up
 make -C app migrate-version
+```
+
+### `auth middleware setup failed: SUPABASE_JWKS_URL is required`
+
+Add `SUPABASE_JWKS_URL` to `app/api/.env.dev` (or export it in the shell), then rerun:
+
+```bash
+make -C app api-run
 ```
 
 ### `failed to open database ... connect: no route to host`

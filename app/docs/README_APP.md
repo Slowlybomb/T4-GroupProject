@@ -15,6 +15,35 @@ For full step-by-step commands, see `app/docs/README.md`.
 - Use Supabase Session Pooler connection string for local migrations.
 - No local Postgres container is required right now.
 
+## Go API Env Snapshot (`app/api/.env.dev`)
+
+Required:
+- `DATABASE_URL` (or `DB_URL`)
+- `SUPABASE_JWKS_URL`
+
+Optional:
+- `SUPABASE_URL` (used to derive JWT issuer if `JWT_ISSUER` is not set)
+- `JWT_ISSUER`
+- `JWT_AUDIENCE` (default: `authenticated`)
+- `PORT` (default: `8080`)
+
+## API Quick Check
+
+From repo root:
+
+```bash
+make -C app api-run
+```
+
+Build + start binary:
+
+```bash
+make -C app api-build
+make -C app api-start
+```
+
+Built binary path: `app/api/bin/server`.
+
 ## Migration Quick Check
 
 From repo root:
