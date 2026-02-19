@@ -114,15 +114,21 @@ func main() {
 // registerRoutes groups all API endpoint wiring so tests can build a router
 // with fake middleware/store implementations.
 func registerRoutes(r *gin.Engine, authMiddleware gin.HandlerFunc, store activityService) {
+	healthHandler := func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status": "ok",
+			"time":   time.Now().UTC().Format(time.RFC3339),
+		})
+	}
+
+	// Keep compatibility with common platform health checks.
+	r.GET("/health", healthHandler)
+	r.GET("/v1/health", healthHandler)
+
 	api := r.Group("/api/v1")
 	{
 		// Health stays public so uptime checks do not need a JWT.
-		api.GET("/health", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{
-				"status": "ok",
-				"time":   time.Now().UTC().Format(time.RFC3339),
-			})
-		})
+		api.GET("/health", healthHandler)
 
 		activities := api.Group("/activities")
 		// Everything under /activities is protected by JWT middleware.
