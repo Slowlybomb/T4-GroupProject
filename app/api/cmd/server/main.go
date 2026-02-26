@@ -121,9 +121,9 @@ func registerRoutes(r *gin.Engine, authMiddleware gin.HandlerFunc, store activit
 		})
 	}
 
-	// Keep compatibility with common platform health checks.
+	// Public health endpoint for uptime checks (no auth required).
+	// https://t4-groupproject.onrender.com/health
 	r.GET("/health", healthHandler)
-	r.GET("/v1/health", healthHandler)
 
 	api := r.Group("/api/v1")
 	{
