@@ -12,10 +12,7 @@ class RowingApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.red,
-        fontFamily: 'sans-serif',
-      ),
+      theme: ThemeData(primarySwatch: Colors.red, fontFamily: 'sans-serif'),
       home: const OnboardingCarousel(),
     );
   }
@@ -37,7 +34,8 @@ class _OnboardingCarouselState extends State<OnboardingCarousel> {
       MaterialPageRoute(builder: (context) => const MainNavigationHub()),
     );
   }
-void _moveNext() {
+
+  void _moveNext() {
     _pageController.nextPage(
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeInOut,
@@ -70,20 +68,21 @@ void _moveNext() {
       ),
     );
   }
-
 }
+
 class MainNavigationHub extends StatefulWidget {
   const MainNavigationHub({super.key});
   @override
   State<MainNavigationHub> createState() => _MainNavigationHubState();
 }
+
 class _MainNavigationHubState extends State<MainNavigationHub> {
   int _currentIndex = 0;
-  
+
   // Track if a post is selected
   bool _showDetails = false;
 
- late final List<Widget> _screens;
+  late final List<Widget> _screens;
 
   @override
   void initState() {
@@ -104,7 +103,9 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
 
           // 3. THE DETAIL OVERLAY: Only shows if _isViewingDetail is true
           if (_showDetails)
-            PostDetailScreen(onClose: () => setState(() => _showDetails = false)),
+            PostDetailScreen(
+              onClose: () => setState(() => _showDetails = false),
+            ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -121,8 +122,16 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
         showUnselectedLabels: false,
         type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Feed'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Stats'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Feed',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Stats',
+          ),
         ],
       ),
     );
@@ -142,26 +151,20 @@ class FeedScreen extends StatelessWidget {
         slivers: [
           // Header Area
           const SliverToBoxAdapter(child: MainHeader()),
-          
+
           // Weekly Summary Card
           const SliverToBoxAdapter(child: WeeklySummaryCard()),
 
           // The Feed List
           SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                // Insert "Who to Follow" after the second post
-                if (index == 2) return const WhoToFollowSection();
-                return InkWell(
-                  onTap: onPostTap,
-                  child: const ActivityPostCard(),
-            );
-              }
-         ),
-          )
+            delegate: SliverChildBuilderDelegate((context, index) {
+              // Insert "Who to Follow" after the second post
+              if (index == 2) return const WhoToFollowSection();
+              return InkWell(onTap: onPostTap, child: const ActivityPostCard());
+            }),
+          ),
         ],
       ),
-      
     );
   }
 }
@@ -178,35 +181,53 @@ class MainHeader extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Image.network('https://cdn-icons-png.flaticon.com/512/2910/2910793.png', height: 40), // Placeholder logo
+              Image.asset(
+                'assets/img/logo-gondolier.png',
+                height: 40,
+              ), // Placeholder logo
               Row(
                 children: const [
-                   Text('Home', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                   SizedBox(width: 15),
+                  Text(
+                    'Home',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(width: 15),
                   Icon(Icons.notifications_none, color: Colors.red),
                   SizedBox(width: 15),
                   Icon(Icons.account_circle, color: Colors.red),
                   SizedBox(width: 15),
                 ],
-              )
+              ),
             ],
           ),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.start,
             children: const [
-              Text('Following', style: TextStyle(fontWeight: FontWeight.bold, decoration: TextDecoration.underline, decorationColor: Colors.red, decorationThickness: 2)),
+              Text(
+                'Following',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  decoration: TextDecoration.underline,
+                  decorationColor: Colors.red,
+                  decorationThickness: 2,
+                ),
+              ),
               SizedBox(width: 20),
               Text('You', style: TextStyle(color: Colors.grey)),
               SizedBox(width: 20),
               Text('Discover', style: TextStyle(color: Colors.grey)),
             ],
-          )
+          ),
         ],
       ),
     );
   }
 }
+
 class WeeklySummaryCard extends StatelessWidget {
   const WeeklySummaryCard({super.key});
 
@@ -222,7 +243,15 @@ class WeeklySummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Weekly Summary', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic)),
+          const Text(
+            'Weekly Summary',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -231,7 +260,14 @@ class WeeklySummaryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
                     Text('Distance', style: TextStyle(color: Colors.white70)),
-                    Text('48.9 km', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                    Text(
+                      '48.9 km',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -240,7 +276,14 @@ class WeeklySummaryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
                     Text('Activities', style: TextStyle(color: Colors.white70)),
-                    Text('4', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                    Text(
+                      '4',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -256,9 +299,12 @@ class WeeklySummaryCard extends StatelessWidget {
                 foregroundColor: Colors.red,
                 shape: const StadiumBorder(),
               ),
-              child: const Text('View progress', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text(
+                'View progress',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -276,20 +322,31 @@ class ActivityPostCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const CircleAvatar(backgroundColor: Colors.grey),
+              const CircleAvatar(
+                backgroundImage: AssetImage('assets/img/dummy-pp.png'),
+                radius: 20,
+              ),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
-                  Text('My name is Hugo', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text('2h ago', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text(
+                    'My name is Hugo',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    '2h ago',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
                 ],
               ),
               const Spacer(),
@@ -298,7 +355,10 @@ class ActivityPostCard extends StatelessWidget {
           ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12.0),
-            child: Text('Shit myself while rowing', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            child: Text(
+              'Shit myself while rowing',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
           ),
           // Stats Row
           Row(
@@ -323,16 +383,16 @@ class ActivityPostCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Row(
-          
-              children: const [
+            children: const [
               Icon(Icons.favorite_border, color: Colors.red, size: 20),
               SizedBox(width: 5),
               Text('12', style: TextStyle(fontSize: 12)),
               SizedBox(width: 15),
               Icon(Icons.chat_bubble_outline, color: Colors.grey, size: 20),
               Spacer(),
-              Icon(Icons.share_outlined, color: Colors.grey, size: 20),],
-          )
+              Icon(Icons.share_outlined, color: Colors.grey, size: 20),
+            ],
+          ),
         ],
       ),
     );
@@ -350,11 +410,15 @@ class StatItem extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-        Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        ),
       ],
     );
   }
 }
+
 class PostDetailScreen extends StatelessWidget {
   final VoidCallback onClose; // New callback
   const PostDetailScreen({super.key, required this.onClose});
@@ -363,7 +427,8 @@ class PostDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Column( // Changed to Column for direct vertical stacking
+      body: Column(
+        // Changed to Column for direct vertical stacking
         children: [
           // 1. FIXED HEADER (Image & Graph)
           Stack(
@@ -387,7 +452,7 @@ class PostDetailScreen extends StatelessWidget {
                     child: Icon(Icons.arrow_back, color: Colors.red),
                   ),
                   onPressed: onClose,
-                )
+                ),
               ),
             ],
           ),
@@ -396,16 +461,26 @@ class PostDetailScreen extends StatelessWidget {
           Expanded(
             child: Container(
               width: double.infinity,
-              transform: Matrix4.translationValues(0, -30, 0), // Pulls the sheet over the image
+              transform: Matrix4.translationValues(
+                0,
+                -30,
+                0,
+              ), // Pulls the sheet over the image
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
                 boxShadow: [
-                  BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 2)
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
                 ],
               ),
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(25),
                   child: Column(
@@ -427,15 +502,29 @@ class PostDetailScreen extends StatelessWidget {
                       // User Info
                       Row(
                         children: [
-                          const CircleAvatar(backgroundColor: Colors.grey, radius: 20),
+                          const CircleAvatar(
+                            backgroundColor: Colors.grey,
+                            radius: 20,
+                          ),
                           const SizedBox(width: 12),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: const [
-                              Text("My name is Hugo", 
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
-                              Text("22 Jan 2026 - Cork, Ireland", 
-                                style: TextStyle(color: Colors.grey, fontSize: 12)),
+                              Text(
+                                "My name is Hugo",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              Text(
+                                "22 Jan 2026 - Cork, Ireland",
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -445,7 +534,11 @@ class PostDetailScreen extends StatelessWidget {
                       // Title
                       const Text(
                         "Shit myself while rowing",
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
                       ),
                       const SizedBox(height: 25),
 
@@ -454,10 +547,22 @@ class PostDetailScreen extends StatelessWidget {
                         spacing: 30,
                         runSpacing: 25,
                         children: const [
-                          SizedBox(width: 140, child: StatItem(label: 'Distance', value: '33.2km')),
-                          SizedBox(width: 140, child: StatItem(label: 'Avg', value: '1h 12m')),
-                          SizedBox(width: 140, child: StatItem(label: 'Time', value: '1h 12m')),
-                          SizedBox(width: 140, child: StatItem(label: 'Split', value: '1h 12m')),
+                          SizedBox(
+                            width: 140,
+                            child: StatItem(label: 'Distance', value: '33.2km'),
+                          ),
+                          SizedBox(
+                            width: 140,
+                            child: StatItem(label: 'Avg', value: '1h 12m'),
+                          ),
+                          SizedBox(
+                            width: 140,
+                            child: StatItem(label: 'Time', value: '1h 12m'),
+                          ),
+                          SizedBox(
+                            width: 140,
+                            child: StatItem(label: 'Split', value: '1h 12m'),
+                          ),
                         ],
                       ),
 
@@ -467,9 +572,21 @@ class PostDetailScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: const [
-                          Icon(Icons.favorite_border, color: Colors.red, size: 28),
-                          Icon(Icons.chat_bubble_outline, color: Colors.red, size: 28),
-                          Icon(Icons.share_outlined, color: Colors.red, size: 28),
+                          Icon(
+                            Icons.favorite_border,
+                            color: Colors.red,
+                            size: 28,
+                          ),
+                          Icon(
+                            Icons.chat_bubble_outline,
+                            color: Colors.red,
+                            size: 28,
+                          ),
+                          Icon(
+                            Icons.share_outlined,
+                            color: Colors.red,
+                            size: 28,
+                          ),
                         ],
                       ),
 
@@ -500,6 +617,7 @@ class PostDetailScreen extends StatelessWidget {
     );
   }
 }
+
 // --- Custom Painter for the Orange Line ---
 class OrangeLinePainter extends CustomPainter {
   @override
@@ -524,6 +642,7 @@ class OrangeLinePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
 class WhoToFollowSection extends StatelessWidget {
   const WhoToFollowSection({super.key});
 
@@ -537,8 +656,17 @@ class WhoToFollowSection extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: const [
-              Text('Who to Follow:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-              Text('See All', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              Text(
+                'Who to Follow:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              Text(
+                'See All',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
         ),
@@ -550,11 +678,12 @@ class WhoToFollowSection extends StatelessWidget {
             itemCount: 5,
             itemBuilder: (context, index) => const FollowCard(),
           ),
-        )
+        ),
       ],
     );
   }
 }
+
 class UserStatsScreen extends StatelessWidget {
   const UserStatsScreen({super.key});
 
@@ -563,10 +692,18 @@ class UserStatsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("You", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+        title: const Text(
+          "You",
+          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
-        actions: const [Padding(padding: EdgeInsets.all(8.0), child: CircleAvatar(backgroundColor: Colors.grey, radius: 15))],
+        actions: const [
+          Padding(
+            padding: EdgeInsets.all(8.0),
+            child: CircleAvatar(backgroundColor: Colors.grey, radius: 15),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -576,37 +713,93 @@ class UserStatsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("This Week", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+                  Text(
+                    "This Week",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                  ),
                   Row(
                     children: [
-                      Text("Distance: 0 km  ", style: TextStyle(color: Colors.grey)),
+                      Text(
+                        "Distance: 0 km  ",
+                        style: TextStyle(color: Colors.grey),
+                      ),
                       Text("Time: 0 m", style: TextStyle(color: Colors.grey)),
                     ],
                   ),
-                  SizedBox(height: 100, child: Center(child: Text("--- Graph Placeholder ---"))),
+                  SizedBox(
+                    height: 100,
+                    child: Center(child: Text("--- Graph Placeholder ---")),
+                  ),
                 ],
               ),
             ),
-            const Text("More graphs", style: TextStyle(fontSize: 40, fontWeight: FontWeight.w300)),
+            const Text(
+              "More graphs",
+              style: TextStyle(fontSize: 40, fontWeight: FontWeight.w300),
+            ),
             Container(
               margin: const EdgeInsets.all(20),
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(20)),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Training Log", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  Text("Feb 2 - Feb 8, 2026", style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  Text(
+                    "Training Log",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    "Feb 2 - Feb 8, 2026",
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
                   SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      CircleAvatar(radius: 15, backgroundColor: Colors.white24, child: Text("M", style: TextStyle(color: Colors.white, fontSize: 10))),
-                      CircleAvatar(radius: 15, backgroundColor: Colors.white24, child: Text("T", style: TextStyle(color: Colors.white, fontSize: 10))),
-                      CircleAvatar(radius: 20, backgroundColor: Colors.white, child: Text("1h", style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold))),
-                      CircleAvatar(radius: 15, backgroundColor: Colors.white24, child: Text("T", style: TextStyle(color: Colors.white, fontSize: 10))),
+                      CircleAvatar(
+                        radius: 15,
+                        backgroundColor: Colors.white24,
+                        child: Text(
+                          "M",
+                          style: TextStyle(color: Colors.white, fontSize: 10),
+                        ),
+                      ),
+                      CircleAvatar(
+                        radius: 15,
+                        backgroundColor: Colors.white24,
+                        child: Text(
+                          "T",
+                          style: TextStyle(color: Colors.white, fontSize: 10),
+                        ),
+                      ),
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: Colors.white,
+                        child: Text(
+                          "1h",
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      CircleAvatar(
+                        radius: 15,
+                        backgroundColor: Colors.white24,
+                        child: Text(
+                          "T",
+                          style: TextStyle(color: Colors.white, fontSize: 10),
+                        ),
+                      ),
                     ],
-                  )
+                  ),
                 ],
               ),
             ),
@@ -634,20 +827,30 @@ class FollowCard extends StatelessWidget {
         children: [
           const CircleAvatar(radius: 30, backgroundColor: Colors.grey),
           const SizedBox(height: 10),
-          const Text('Peter McQualere', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
-          const Text('10 friends in common', style: TextStyle(fontSize: 10, color: Colors.grey)),
+          const Text(
+            'Peter McQualere',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const Text(
+            '10 friends in common',
+            style: TextStyle(fontSize: 10, color: Colors.grey),
+          ),
           const Spacer(),
           ElevatedButton(
             onPressed: () {},
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, minimumSize: const Size(double.infinity, 30)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 30),
+            ),
             child: const Text('Follow', style: TextStyle(fontSize: 12)),
-          )
+          ),
         ],
       ),
     );
   }
 }
-
 
 // --- COMPOSANTS REUTILISABLES ---
 
@@ -683,14 +886,20 @@ Widget primaryButton(String text, VoidCallback onPressed) {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
         const SizedBox(width: 10),
         const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 14),
       ],
     ),
   );
 }
-   
 
 class LoginClipper extends CustomClipper<Path> {
   @override
@@ -703,6 +912,7 @@ class LoginClipper extends CustomClipper<Path> {
     path.close();
     return path;
   }
+
   @override
   bool shouldReclip(oldClipper) => false;
 }
@@ -727,9 +937,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return const Scaffold(
       backgroundColor: Color(0xFFE53935),
-      body: Center(
-        child: Icon(Icons.tsunami, size: 100, color: Colors.white),
-      ),
+      body: Center(child: Icon(Icons.tsunami, size: 100, color: Colors.white)),
     );
   }
 }
@@ -738,7 +946,11 @@ class _SplashScreenState extends State<SplashScreen> {
 class AuthScreen extends StatefulWidget {
   final VoidCallback onLoginSuccess;
   final VoidCallback onRegisterStart;
-  const AuthScreen({super.key, required this.onLoginSuccess, required this.onRegisterStart});
+  const AuthScreen({
+    super.key,
+    required this.onLoginSuccess,
+    required this.onRegisterStart,
+  });
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -767,15 +979,29 @@ class _AuthScreenState extends State<AuthScreen> {
                 children: [
                   Row(
                     children: [
-                      _authTab("Login", isLogin, () => setState(() => isLogin = true)),
+                      _authTab(
+                        "Login",
+                        isLogin,
+                        () => setState(() => isLogin = true),
+                      ),
                       const SizedBox(width: 20),
-                      _authTab("Sign up", !isLogin, () => setState(() => isLogin = false)),
+                      _authTab(
+                        "Sign up",
+                        !isLogin,
+                        () => setState(() => isLogin = false),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 40),
                   Text(
-                    isLogin ? "Welcome Back.\nHUGO" : "Create Account.\nJOIN US",
-                    style: const TextStyle(fontSize: 32, color: Colors.white, fontWeight: FontWeight.bold),
+                    isLogin
+                        ? "Welcome Back.\nHUGO"
+                        : "Create Account.\nJOIN US",
+                    style: const TextStyle(
+                      fontSize: 32,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const Spacer(),
                   _buildTextField("Email:"),
@@ -819,8 +1045,12 @@ class _AuthScreenState extends State<AuthScreen> {
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.white70),
-        enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white54)),
-        focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white)),
+        enabledBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: Colors.white54),
+        ),
+        focusedBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: Colors.white),
+        ),
       ),
     );
   }
@@ -838,11 +1068,22 @@ class GenderScreen extends StatelessWidget {
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text("Tell us About Yourself", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const Text(
+            "Tell us About Yourself",
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 40),
-          const Text("Gender", style: TextStyle(fontSize: 18, color: Colors.black54)),
+          const Text(
+            "Gender",
+            style: TextStyle(fontSize: 18, color: Colors.black54),
+          ),
           const SizedBox(height: 30),
-          ...["Male", "Female", "Non-binary", "Prefer not to say"].map((g) => _genderOption(g)),
+          ...[
+            "Male",
+            "Female",
+            "Non-binary",
+            "Prefer not to say",
+          ].map((g) => _genderOption(g)),
           const SizedBox(height: 50),
           _navigationRow(onBack, onNext),
         ],
@@ -871,7 +1112,11 @@ class GenderScreen extends StatelessWidget {
 // --- FRAMES 14 & 15: DYNAMIC PICKERS ---
 class AgePickerScreen extends StatelessWidget {
   final VoidCallback onNext, onBack;
-  const AgePickerScreen({super.key, required this.onNext, required this.onBack});
+  const AgePickerScreen({
+    super.key,
+    required this.onNext,
+    required this.onBack,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -888,7 +1133,11 @@ class AgePickerScreen extends StatelessWidget {
 
 class WeightPickerScreen extends StatelessWidget {
   final VoidCallback onNext, onBack;
-  const WeightPickerScreen({super.key, required this.onNext, required this.onBack});
+  const WeightPickerScreen({
+    super.key,
+    required this.onNext,
+    required this.onBack,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -933,7 +1182,9 @@ class _DynamicScalePickerState extends State<DynamicScalePicker> {
   void initState() {
     super.initState();
     _currentScrollOffset = (widget.initial - widget.min) * itemHeight;
-    _controller = FixedExtentScrollController(initialItem: widget.initial - widget.min);
+    _controller = FixedExtentScrollController(
+      initialItem: widget.initial - widget.min,
+    );
     _controller.addListener(() {
       setState(() {
         _currentScrollOffset = _controller.offset;
@@ -948,7 +1199,10 @@ class _DynamicScalePickerState extends State<DynamicScalePicker> {
       body: Column(
         children: [
           const SizedBox(height: 80),
-          Text(widget.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(
+            widget.title,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
           Expanded(
             child: Stack(
               alignment: Alignment.center,
@@ -970,19 +1224,27 @@ class _DynamicScalePickerState extends State<DynamicScalePicker> {
                     childCount: (widget.max - widget.min) + 1,
                     builder: (context, index) {
                       double itemPosition = index * itemHeight;
-                      double distance = (itemPosition - _currentScrollOffset).abs();
-                      
+                      double distance = (itemPosition - _currentScrollOffset)
+                          .abs();
+
                       // howClose est à 1.0 au centre, et diminue en s'éloignant.
                       // On divise par itemHeight * 2 pour que le changement commence bien avant les lignes.
-                      double howClose = 1.0 - (distance / (itemHeight * 2.0)).clamp(0.0, 1.0);
+                      double howClose =
+                          1.0 - (distance / (itemHeight * 2.0)).clamp(0.0, 1.0);
 
                       return Center(
                         child: Text(
                           "${widget.min + index}${widget.unit.isNotEmpty ? ' ${widget.unit}' : ''}",
                           style: TextStyle(
                             fontSize: 20 + (18 * howClose), // De 20 à 38
-                            fontWeight: howClose > 0.7 ? FontWeight.w900 : (howClose > 0.4 ? FontWeight.bold : FontWeight.normal),
-                            color: Colors.black.withOpacity(0.3 + (0.7 * howClose)),
+                            fontWeight: howClose > 0.7
+                                ? FontWeight.w900
+                                : (howClose > 0.4
+                                      ? FontWeight.bold
+                                      : FontWeight.normal),
+                            color: Colors.black.withOpacity(
+                              0.3 + (0.7 * howClose),
+                            ),
                           ),
                         ),
                       );
