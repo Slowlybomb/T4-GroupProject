@@ -47,7 +47,7 @@
 
 - [x] Create buckets (avatars, workout-images)
 - [x] Define access policies
-- [ ] Add upload/download endpoints and signed URL handling
+- [x] Add upload/download endpoints and signed URL handling
 
 ## Flutter App
 

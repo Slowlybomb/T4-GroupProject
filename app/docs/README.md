@@ -59,6 +59,7 @@ Required API env vars:
 
 Optional API env vars:
 - `SUPABASE_URL` (used to derive issuer if `JWT_ISSUER` is not set)
+- `SUPABASE_SERVICE_ROLE_KEY` (required for signed file URL endpoints)
 - `JWT_ISSUER` (explicit JWT issuer)
 - `JWT_AUDIENCE` (defaults to `authenticated`)
 - `PORT` (defaults to `8080`)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/rsa"
@@ -10,9 +11,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math/big"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -20,6 +23,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -59,6 +63,35 @@ type CreateActivityRequest struct {
 	RouteGeoJSON        json.RawMessage `json:"route_geojson"`
 }
 
+type createUploadURLRequest struct {
+	Bucket           string `json:"bucket" binding:"required,oneof=avatars workout-images"`
+	Path             string `json:"path" binding:"required"`
+	ContentType      string `json:"content_type" binding:"required"`
+	ExpiresInSeconds *int   `json:"expires_in_seconds" binding:"omitempty,min=60,max=3600"`
+}
+
+type createUploadURLResponse struct {
+	Bucket    string            `json:"bucket"`
+	Path      string            `json:"path"`
+	Method    string            `json:"method"`
+	UploadURL string            `json:"upload_url"`
+	Headers   map[string]string `json:"headers,omitempty"`
+	ExpiresAt time.Time         `json:"expires_at"`
+}
+
+type createDownloadURLRequest struct {
+	Bucket           string `json:"bucket" binding:"required,oneof=avatars workout-images"`
+	Path             string `json:"path" binding:"required"`
+	ExpiresInSeconds *int   `json:"expires_in_seconds" binding:"omitempty,min=60,max=3600"`
+}
+
+type createDownloadURLResponse struct {
+	Bucket      string    `json:"bucket"`
+	Path        string    `json:"path"`
+	DownloadURL string    `json:"download_url"`
+	ExpiresAt   time.Time `json:"expires_at"`
+}
+
 // authConfig holds necessary info to verify JWTs against Supabase's JWKS endpoint.
 type authConfig struct {
 	JWKSURL   string
@@ -73,6 +106,27 @@ type activityService interface {
 	get(ctx context.Context, userID, activityID string) (Activity, bool, error)
 	like(ctx context.Context, userID, activityID string) (Activity, bool, error)
 }
+
+type storageSigner interface {
+	createSignedUploadURL(ctx context.Context, bucket, objectPath string, expiresIn time.Duration) (string, error)
+	createSignedDownloadURL(ctx context.Context, bucket, objectPath string, expiresIn time.Duration) (string, error)
+}
+
+type supabaseStorageSigner struct {
+	baseURL        string
+	serviceRoleKey string
+	client         *http.Client
+}
+
+const (
+	defaultSignedURLExpirySeconds = 600
+	minSignedURLExpirySeconds     = 60
+	maxSignedURLExpirySeconds     = 3600
+
+	wsChannelFeed          = "feed"
+	wsChannelStatus        = "status"
+	wsChannelNotifications = "notifications"
+)
 
 // main is the app entry point.
 // It wires middleware, auth, storage, and routes, then starts the HTTP server.
@@ -95,7 +149,13 @@ func main() {
 	}
 	defer store.close()
 
-	registerRoutes(r, authMiddleware, store)
+	fileSigner, err := newSupabaseStorageSignerFromEnv()
+	if err != nil {
+		// Keep activity routes available even if storage signing env vars are missing.
+		log.Printf("storage signer disabled: %v", err)
+	}
+
+	registerRoutes(r, authMiddleware, store, fileSigner)
 
 	// Render provides PORT; default to 8080 for local.
 	port := strings.TrimSpace(os.Getenv("PORT"))
@@ -113,7 +173,12 @@ func main() {
 
 // registerRoutes groups all API endpoint wiring so tests can build a router
 // with fake middleware/store implementations.
-func registerRoutes(r *gin.Engine, authMiddleware gin.HandlerFunc, store activityService) {
+func registerRoutes(
+	r *gin.Engine,
+	authMiddleware gin.HandlerFunc,
+	store activityService,
+	fileSigner storageSigner,
+) {
 	healthHandler := func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status": "ok",
@@ -259,7 +324,294 @@ func registerRoutes(r *gin.Engine, authMiddleware gin.HandlerFunc, store activit
 
 			c.JSON(http.StatusOK, a)
 		})
+
+		files := api.Group("/files")
+		files.Use(authMiddleware)
+
+		files.POST("/upload-url", createSignedUploadURLHandler(fileSigner))
+		files.POST("/download-url", createSignedDownloadURLHandler(fileSigner))
 	}
+}
+
+// createSignedUploadURLHandler handles POST /api/v1/files/upload-url.
+// It validates request ownership and returns a signed upload URL for PUT.
+func createSignedUploadURLHandler(signer storageSigner) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if signer == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "file storage is not configured"})
+			return
+		}
+
+		userID, ok := authUserID(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authenticated user"})
+			return
+		}
+
+		var req createUploadURLRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "invalid request body",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		contentType := strings.TrimSpace(req.ContentType)
+		if contentType == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "content_type is required"})
+			return
+		}
+
+		objectPath, err := validateStorageObjectPath(userID, req.Path)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		expiresIn := resolveSignedURLExpiry(req.ExpiresInSeconds)
+		uploadURL, err := signer.createSignedUploadURL(c.Request.Context(), req.Bucket, objectPath, expiresIn)
+		if err != nil {
+			log.Printf("create signed upload url failed: %v", err)
+			c.JSON(http.StatusBadGateway, gin.H{"error": "failed to create signed upload url"})
+			return
+		}
+
+		c.JSON(http.StatusOK, createUploadURLResponse{
+			Bucket:    req.Bucket,
+			Path:      objectPath,
+			Method:    http.MethodPut,
+			UploadURL: uploadURL,
+			Headers: map[string]string{
+				"Content-Type": contentType,
+			},
+			ExpiresAt: time.Now().UTC().Add(expiresIn),
+		})
+	}
+}
+
+// createSignedDownloadURLHandler handles POST /api/v1/files/download-url.
+// It validates request ownership and returns a signed download URL.
+func createSignedDownloadURLHandler(signer storageSigner) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if signer == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "file storage is not configured"})
+			return
+		}
+
+		userID, ok := authUserID(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authenticated user"})
+			return
+		}
+
+		var req createDownloadURLRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "invalid request body",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		objectPath, err := validateStorageObjectPath(userID, req.Path)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		expiresIn := resolveSignedURLExpiry(req.ExpiresInSeconds)
+		downloadURL, err := signer.createSignedDownloadURL(c.Request.Context(), req.Bucket, objectPath, expiresIn)
+		if err != nil {
+			log.Printf("create signed download url failed: %v", err)
+			c.JSON(http.StatusBadGateway, gin.H{"error": "failed to create signed download url"})
+			return
+		}
+
+		c.JSON(http.StatusOK, createDownloadURLResponse{
+			Bucket:      req.Bucket,
+			Path:        objectPath,
+			DownloadURL: downloadURL,
+			ExpiresAt:   time.Now().UTC().Add(expiresIn),
+		})
+	}
+}
+
+// newSupabaseStorageSignerFromEnv constructs a storage signer from env vars.
+// Required: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
+func newSupabaseStorageSignerFromEnv() (*supabaseStorageSigner, error) {
+	baseURL := strings.TrimSuffix(strings.TrimSpace(os.Getenv("SUPABASE_URL")), "/")
+	if baseURL == "" {
+		return nil, errors.New("SUPABASE_URL is required for storage signing")
+	}
+
+	serviceRoleKey := strings.TrimSpace(os.Getenv("SUPABASE_SERVICE_ROLE_KEY"))
+	if serviceRoleKey == "" {
+		return nil, errors.New("SUPABASE_SERVICE_ROLE_KEY is required for storage signing")
+	}
+
+	return &supabaseStorageSigner{
+		baseURL:        baseURL,
+		serviceRoleKey: serviceRoleKey,
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+	}, nil
+}
+
+// createSignedUploadURL asks Supabase Storage for a signed upload URL.
+func (s *supabaseStorageSigner) createSignedUploadURL(
+	ctx context.Context,
+	bucket, objectPath string,
+	expiresIn time.Duration,
+) (string, error) {
+	encodedPath := encodeStoragePath(objectPath)
+	endpoint := fmt.Sprintf("%s/storage/v1/object/upload/sign/%s/%s", s.baseURL, bucket, encodedPath)
+	return s.createSignedURL(ctx, endpoint, expiresIn)
+}
+
+// createSignedDownloadURL asks Supabase Storage for a signed download URL.
+func (s *supabaseStorageSigner) createSignedDownloadURL(
+	ctx context.Context,
+	bucket, objectPath string,
+	expiresIn time.Duration,
+) (string, error) {
+	encodedPath := encodeStoragePath(objectPath)
+	endpoint := fmt.Sprintf("%s/storage/v1/object/sign/%s/%s", s.baseURL, bucket, encodedPath)
+	return s.createSignedURL(ctx, endpoint, expiresIn)
+}
+
+// createSignedURL is the shared HTTP client call to Supabase signing endpoints.
+// It accepts response variants and always returns an absolute URL.
+func (s *supabaseStorageSigner) createSignedURL(
+	ctx context.Context,
+	endpoint string,
+	expiresIn time.Duration,
+) (string, error) {
+	payload, err := json.Marshal(map[string]int{
+		"expiresIn": int(expiresIn.Seconds()),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(payload))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+s.serviceRoleKey)
+	req.Header.Set("apikey", s.serviceRoleKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("request supabase storage: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+	if err != nil {
+		return "", fmt.Errorf("read supabase storage response: %w", err)
+	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return "", fmt.Errorf("supabase storage status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	var payloadMap map[string]any
+	if err := json.Unmarshal(body, &payloadMap); err != nil {
+		return "", fmt.Errorf("decode supabase storage response: %w", err)
+	}
+
+	signedPath := firstNonEmptyString(payloadMap["signedURL"], payloadMap["signedUrl"], payloadMap["url"])
+	if signedPath == "" {
+		return "", errors.New("supabase storage response missing signed url")
+	}
+
+	return toAbsoluteStorageURL(s.baseURL, signedPath), nil
+}
+
+// validateStorageObjectPath enforces a safe object key rooted at the caller's user ID.
+// Expected format: "<user_id>/...".
+func validateStorageObjectPath(userID, rawPath string) (string, error) {
+	objectPath := strings.TrimSpace(rawPath)
+	if objectPath == "" {
+		return "", errors.New("path is required")
+	}
+	if strings.HasPrefix(objectPath, "/") {
+		return "", errors.New("path must not start with /")
+	}
+	if strings.Contains(objectPath, "\\") {
+		return "", errors.New("path must use / separators")
+	}
+	if !strings.HasPrefix(objectPath, userID+"/") {
+		return "", errors.New("path must start with the authenticated user id prefix")
+	}
+
+	parts := strings.Split(objectPath, "/")
+	for _, part := range parts {
+		switch part {
+		case "", ".", "..":
+			return "", errors.New("path contains invalid segments")
+		}
+	}
+
+	return objectPath, nil
+}
+
+// resolveSignedURLExpiry applies default expiry and clamps to supported bounds.
+func resolveSignedURLExpiry(raw *int) time.Duration {
+	seconds := defaultSignedURLExpirySeconds
+	if raw != nil {
+		seconds = *raw
+	}
+	if seconds < minSignedURLExpirySeconds {
+		seconds = minSignedURLExpirySeconds
+	}
+	if seconds > maxSignedURLExpirySeconds {
+		seconds = maxSignedURLExpirySeconds
+	}
+	return time.Duration(seconds) * time.Second
+}
+
+// encodeStoragePath escapes each path segment but preserves "/" separators.
+func encodeStoragePath(objectPath string) string {
+	parts := strings.Split(objectPath, "/")
+	for i := range parts {
+		parts[i] = url.PathEscape(parts[i])
+	}
+	return strings.Join(parts, "/")
+}
+
+// toAbsoluteStorageURL normalizes Supabase signed URL responses to full URLs.
+func toAbsoluteStorageURL(baseURL, signedPath string) string {
+	if strings.HasPrefix(signedPath, "http://") || strings.HasPrefix(signedPath, "https://") {
+		return signedPath
+	}
+	if strings.HasPrefix(signedPath, "/storage/v1/") {
+		return baseURL + signedPath
+	}
+	if strings.HasPrefix(signedPath, "storage/v1/") {
+		return baseURL + "/" + signedPath
+	}
+	if strings.HasPrefix(signedPath, "/") {
+		return baseURL + "/storage/v1" + signedPath
+	}
+	return baseURL + "/storage/v1/" + signedPath
+}
+
+// firstNonEmptyString returns the first non-empty string among mixed values.
+func firstNonEmptyString(values ...any) string {
+	for _, value := range values {
+		s, ok := value.(string)
+		if !ok {
+			continue
+		}
+		s = strings.TrimSpace(s)
+		if s != "" {
+			return s
+		}
+	}
+	return ""
 }
 
 // newAuthMiddlewareFromEnv builds JWT auth middleware from env config.

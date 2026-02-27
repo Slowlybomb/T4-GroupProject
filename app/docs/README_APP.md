@@ -23,6 +23,7 @@ Required:
 
 Optional:
 - `SUPABASE_URL` (used to derive JWT issuer if `JWT_ISSUER` is not set)
+- `SUPABASE_SERVICE_ROLE_KEY` (required for `/api/v1/files/upload-url` and `/api/v1/files/download-url`)
 - `JWT_ISSUER`
 - `JWT_AUDIENCE` (default: `authenticated`)
 - `PORT` (default: `8080`)
@@ -66,6 +67,9 @@ make migrate-version
   - `avatars/<user_uuid>/profile.jpg`
   - `workout-images/<user_uuid>/<activity_uuid>/img-1.jpg`
 - Backend signed upload/download endpoints must validate the `<user_uuid>/` prefix because service-role operations bypass RLS.
+- Signed URL API endpoints:
+  - `POST /api/v1/files/upload-url`
+  - `POST /api/v1/files/download-url`
 
 ## Testing Quick Check
 
