@@ -58,6 +58,15 @@ From `app/` directory:
 make migrate-version
 ```
 
+## Storage Policy Notes (Supabase Storage)
+
+- Buckets `avatars` and `workout-images` are private (`public = false`).
+- Object keys must start with the authenticated user UUID: `<user_uuid>/...`.
+- Example keys:
+  - `avatars/<user_uuid>/profile.jpg`
+  - `workout-images/<user_uuid>/<activity_uuid>/img-1.jpg`
+- Backend signed upload/download endpoints must validate the `<user_uuid>/` prefix because service-role operations bypass RLS.
+
 ## Testing Quick Check
 
 From repo root:

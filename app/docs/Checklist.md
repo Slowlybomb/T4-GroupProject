@@ -46,7 +46,7 @@
 ## Storage (Supabase Storage)
 
 - [x] Create buckets (avatars, workout-images)
-- [ ] Define access policies
+- [x] Define access policies
 - [ ] Add upload/download endpoints and signed URL handling
 
 ## Flutter App
