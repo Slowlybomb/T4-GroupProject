@@ -19,6 +19,9 @@ profile.cov
 
 # Dependency directories (remove the comment below to include it)
 vendor/
+app/api/bin/
+app/api/.cache/
+app/api/server
 
 # Go workspace file
 go.work
@@ -26,6 +29,8 @@ go.work.sum
 
 # env file
 .env
+.env.dev
+*.env.dev
 
 # Editor/IDE
 .idea/
