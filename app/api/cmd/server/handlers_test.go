@@ -5,12 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/net/websocket"
 )
 
 type fakeActivityService struct {
@@ -71,12 +74,20 @@ func (f *fakeStorageSigner) createSignedDownloadURL(ctx context.Context, bucket,
 
 func testRouter(t *testing.T, authMiddleware gin.HandlerFunc, store activityService, signer storageSigner) *gin.Engine {
 	t.Helper()
+	r, _ := testRouterWithRealtime(t, authMiddleware, store, signer)
+	return r
+}
+
+func testRouterWithRealtime(t *testing.T, authMiddleware gin.HandlerFunc, store activityService, signer storageSigner) (*gin.Engine, *realtimeHub) {
+	t.Helper()
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(requestLogger())
-	registerRoutes(r, authMiddleware, store, signer)
-	return r
+	realtime := newRealtimeHub()
+	t.Cleanup(realtime.close)
+	registerRoutes(r, authMiddleware, store, signer, realtime)
+	return r, realtime
 }
 
 func fakeAuthWithUser(userID string) gin.HandlerFunc {
@@ -442,5 +453,159 @@ func TestFilesUploadURLRequiresUserInContext(t *testing.T) {
 
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d, body=%s", w.Code, w.Body.String())
+	}
+}
+
+type wsEvent struct {
+	Channel string         `json:"channel"`
+	Type    string         `json:"type"`
+	Payload map[string]any `json:"payload"`
+}
+
+func wsURLFromHTTP(serverURL string) string {
+	return "ws" + strings.TrimPrefix(serverURL, "http") + "/api/v1/ws"
+}
+
+func dialWS(t *testing.T, serverURL string, header http.Header) *websocket.Conn {
+	t.Helper()
+	cfg, err := websocket.NewConfig(wsURLFromHTTP(serverURL), "http://localhost/")
+	if err != nil {
+		t.Fatalf("failed to build websocket config: %v", err)
+	}
+	if header != nil {
+		cfg.Header = header
+	}
+	conn, err := websocket.DialConfig(cfg)
+	if err != nil {
+		t.Fatalf("websocket dial failed: %v", err)
+	}
+	return conn
+}
+
+func readWSEvent(t *testing.T, conn *websocket.Conn) wsEvent {
+	t.Helper()
+	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+
+	var payload []byte
+	if err := websocket.Message.Receive(conn, &payload); err != nil {
+		t.Fatalf("failed to read websocket event: %v", err)
+	}
+
+	var event wsEvent
+	if err := json.Unmarshal(payload, &event); err != nil {
+		t.Fatalf("failed to decode websocket event: %v", err)
+	}
+	return event
+}
+
+func TestRealtimeWSHandshakeRequiresUser(t *testing.T) {
+	r := testRouter(t, passThroughAuth(), &fakeActivityService{}, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/ws", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for unauthenticated websocket handshake, got %d", w.Code)
+	}
+}
+
+func TestRealtimeWSHandshakeSuccess(t *testing.T) {
+	r := testRouter(t, fakeAuthWithUser("11111111-1111-1111-1111-111111111111"), &fakeActivityService{}, nil)
+	server := httptest.NewServer(r)
+	defer server.Close()
+
+	header := http.Header{}
+	header.Set("Authorization", "Bearer test-token")
+
+	conn := dialWS(t, server.URL, header)
+	defer conn.Close()
+
+	event := readWSEvent(t, conn)
+	if event.Channel != wsChannelStatus || event.Type != "ws.connected" {
+		t.Fatalf("unexpected initial event: channel=%s type=%s", event.Channel, event.Type)
+	}
+}
+
+func TestRealtimeWSRejectsUnknownChannelSubscription(t *testing.T) {
+	r := testRouter(t, fakeAuthWithUser("11111111-1111-1111-1111-111111111111"), &fakeActivityService{}, nil)
+	server := httptest.NewServer(r)
+	defer server.Close()
+
+	conn := dialWS(t, server.URL, nil)
+	defer conn.Close()
+
+	_ = readWSEvent(t, conn) // ws.connected
+
+	if err := websocket.JSON.Send(conn, wsClientMessage{
+		Action:   "subscribe",
+		Channels: []string{"invalid-channel"},
+	}); err != nil {
+		t.Fatalf("failed to write subscribe message: %v", err)
+	}
+
+	event := readWSEvent(t, conn)
+	if event.Channel != wsChannelStatus || event.Type != "error" {
+		t.Fatalf("expected status error event, got channel=%s type=%s", event.Channel, event.Type)
+	}
+}
+
+func TestRealtimeWSChannelFiltering(t *testing.T) {
+	r, realtime := testRouterWithRealtime(t, fakeAuthWithUser("11111111-1111-1111-1111-111111111111"), &fakeActivityService{}, nil)
+	server := httptest.NewServer(r)
+	defer server.Close()
+
+	feedConn := dialWS(t, server.URL, nil)
+	defer feedConn.Close()
+	_ = readWSEvent(t, feedConn) // ws.connected
+
+	statusConn := dialWS(t, server.URL, nil)
+	defer statusConn.Close()
+	_ = readWSEvent(t, statusConn) // ws.connected
+
+	if err := websocket.JSON.Send(feedConn, wsClientMessage{
+		Action:   "subscribe",
+		Channels: []string{wsChannelFeed},
+	}); err != nil {
+		t.Fatalf("feed subscribe failed: %v", err)
+	}
+	feedAck := readWSEvent(t, feedConn)
+	if feedAck.Type != "subscription.updated" {
+		t.Fatalf("expected feed subscription ack, got %s", feedAck.Type)
+	}
+
+	if err := websocket.JSON.Send(statusConn, wsClientMessage{
+		Action:   "subscribe",
+		Channels: []string{wsChannelStatus},
+	}); err != nil {
+		t.Fatalf("status subscribe failed: %v", err)
+	}
+	statusAck := readWSEvent(t, statusConn)
+	if statusAck.Type != "subscription.updated" {
+		t.Fatalf("expected status subscription ack, got %s", statusAck.Type)
+	}
+
+	realtime.broadcastActivityCreated(Activity{
+		ID:         "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+		UserID:     "11111111-1111-1111-1111-111111111111",
+		Visibility: "public",
+		StartTime:  time.Now().UTC(),
+		CreatedAt:  time.Now().UTC(),
+	})
+
+	feedEvent := readWSEvent(t, feedConn)
+	if feedEvent.Channel != wsChannelFeed || feedEvent.Type != "activity.created" {
+		t.Fatalf("expected feed activity.created event, got channel=%s type=%s", feedEvent.Channel, feedEvent.Type)
+	}
+
+	_ = statusConn.SetReadDeadline(time.Now().Add(250 * time.Millisecond))
+	var payload []byte
+	err := websocket.Message.Receive(statusConn, &payload)
+	if err == nil {
+		t.Fatal("status subscriber should not receive feed events")
+	}
+
+	var netErr net.Error
+	if !errors.As(err, &netErr) || !netErr.Timeout() {
+		t.Fatalf("expected timeout when waiting for unrelated channel event, got %v", err)
 	}
 }

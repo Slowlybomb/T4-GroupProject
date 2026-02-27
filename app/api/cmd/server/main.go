@@ -23,9 +23,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/net/websocket"
 )
 
 type Activity struct {
@@ -128,6 +128,335 @@ const (
 	wsChannelNotifications = "notifications"
 )
 
+var websocketChannels = []string{
+	wsChannelFeed,
+	wsChannelStatus,
+	wsChannelNotifications,
+}
+
+// allowedWSChannels validates subscribe requests from clients.
+var allowedWSChannels = map[string]struct{}{
+	wsChannelFeed:          {},
+	wsChannelStatus:        {},
+	wsChannelNotifications: {},
+}
+
+// wsEnvelope is the normalized message shape sent to websocket clients.
+type wsEnvelope struct {
+	Channel   string `json:"channel,omitempty"`
+	Type      string `json:"type"`
+	Timestamp string `json:"timestamp"`
+	Payload   any    `json:"payload,omitempty"`
+}
+
+type wsClientMessage struct {
+	Action   string   `json:"action"`
+	Channels []string `json:"channels"`
+}
+
+// wsClient stores connection state and the current channel subscriptions.
+type wsClient struct {
+	hub  *realtimeHub
+	conn *websocket.Conn
+
+	userID string
+	send   chan []byte
+
+	subscriptionsMu sync.RWMutex
+	subscriptions   map[string]struct{}
+
+	closeOnce sync.Once
+}
+
+type realtimeHub struct {
+	mu      sync.RWMutex
+	clients map[*wsClient]struct{}
+
+	shutdown  chan struct{}
+	closeOnce sync.Once
+}
+
+// newRealtimeHub initializes in-memory realtime fan-out state.
+func newRealtimeHub() *realtimeHub {
+	return &realtimeHub{
+		clients:  make(map[*wsClient]struct{}),
+		shutdown: make(chan struct{}),
+	}
+}
+
+func newWSClient(hub *realtimeHub, conn *websocket.Conn, userID string) *wsClient {
+	return &wsClient{
+		hub:           hub,
+		conn:          conn,
+		userID:        userID,
+		send:          make(chan []byte, 16),
+		subscriptions: make(map[string]struct{}),
+	}
+}
+
+func (h *realtimeHub) serveWS(c *gin.Context) {
+	userID, ok := authUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authenticated user"})
+		return
+	}
+
+	server := websocket.Server{
+		// Web clients often run on a different origin during development.
+		Handshake: func(config *websocket.Config, req *http.Request) error { return nil },
+		Handler: websocket.Handler(func(conn *websocket.Conn) {
+			conn.PayloadType = websocket.TextFrame
+			client := newWSClient(h, conn, userID)
+			// Register first so broadcasts can target this client immediately.
+			h.register(client)
+
+			// readLoop blocks and owns inbound messages; writeLoop handles outbound queue.
+			go client.writeLoop()
+			client.sendEnvelope(wsChannelStatus, "ws.connected", gin.H{
+				"user_id":  userID,
+				"channels": websocketChannels,
+			})
+			client.readLoop()
+		}),
+	}
+	server.ServeHTTP(c.Writer, c.Request)
+}
+
+func (h *realtimeHub) register(client *wsClient) {
+	h.mu.Lock()
+	h.clients[client] = struct{}{}
+	h.mu.Unlock()
+}
+
+func (h *realtimeHub) unregister(client *wsClient) {
+	h.mu.Lock()
+	delete(h.clients, client)
+	h.mu.Unlock()
+}
+
+func (h *realtimeHub) clientCount() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.clients)
+}
+
+func (h *realtimeHub) startStatusHeartbeat(interval time.Duration) {
+	if interval <= 0 {
+		interval = 30 * time.Second
+	}
+
+	// Heartbeat gives status subscribers a periodic liveness signal.
+	ticker := time.NewTicker(interval)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				h.broadcast(wsChannelStatus, "status.heartbeat", gin.H{
+					"online_clients": h.clientCount(),
+				})
+			case <-h.shutdown:
+				return
+			}
+		}
+	}()
+}
+
+func (h *realtimeHub) close() {
+	h.closeOnce.Do(func() {
+		// Stop heartbeat goroutine before tearing down clients.
+		close(h.shutdown)
+
+		h.mu.RLock()
+		clients := make([]*wsClient, 0, len(h.clients))
+		for client := range h.clients {
+			clients = append(clients, client)
+		}
+		h.mu.RUnlock()
+
+		for _, client := range clients {
+			client.close()
+		}
+	})
+}
+
+func (h *realtimeHub) broadcastActivityCreated(activity Activity) {
+	h.broadcast(wsChannelFeed, "activity.created", gin.H{
+		"activity": activity,
+	})
+}
+
+// broadcast sends one event to all clients subscribed to the channel.
+func (h *realtimeHub) broadcast(channel, eventType string, payload any) {
+	eventBytes, err := json.Marshal(wsEnvelope{
+		Channel:   channel,
+		Type:      eventType,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Payload:   payload,
+	})
+	if err != nil {
+		log.Printf("marshal websocket event failed: %v", err)
+		return
+	}
+
+	// Copy client pointers under lock; writes happen after lock is released.
+	h.mu.RLock()
+	clients := make([]*wsClient, 0, len(h.clients))
+	for client := range h.clients {
+		clients = append(clients, client)
+	}
+	h.mu.RUnlock()
+
+	for _, client := range clients {
+		if !client.isSubscribed(channel) {
+			continue
+		}
+		if !client.enqueue(eventBytes) {
+			client.close()
+		}
+	}
+}
+
+func (c *wsClient) readLoop() {
+	defer c.close()
+
+	_ = c.conn.SetReadDeadline(time.Now().Add(90 * time.Second))
+
+	for {
+		var payload []byte
+		if err := websocket.Message.Receive(c.conn, &payload); err != nil {
+			return
+		}
+
+		var message wsClientMessage
+		if err := json.Unmarshal(payload, &message); err != nil {
+			c.sendEnvelope(wsChannelStatus, "error", gin.H{"error": "invalid message format"})
+			continue
+		}
+
+		switch strings.TrimSpace(message.Action) {
+		case "subscribe":
+			channels, err := normalizeWSChannels(message.Channels)
+			if err != nil {
+				c.sendEnvelope(wsChannelStatus, "error", gin.H{"error": err.Error()})
+				continue
+			}
+
+			// Replace full subscription set to keep server/client state simple.
+			c.replaceSubscriptions(channels)
+			c.sendEnvelope(wsChannelStatus, "subscription.updated", gin.H{
+				"channels": channels,
+			})
+
+			if containsChannel(channels, wsChannelNotifications) {
+				c.sendEnvelope(wsChannelNotifications, "notifications.placeholder", gin.H{
+					"message": "notifications channel is connected; producers are pending",
+				})
+			}
+		default:
+			c.sendEnvelope(wsChannelStatus, "error", gin.H{"error": "unsupported action"})
+		}
+	}
+}
+
+func (c *wsClient) writeLoop() {
+	for payload := range c.send {
+		_ = c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+		if err := websocket.Message.Send(c.conn, payload); err != nil {
+			c.close()
+			return
+		}
+	}
+}
+
+// close is idempotent; it can be called by readLoop, writeLoop, or hub shutdown.
+func (c *wsClient) close() {
+	c.closeOnce.Do(func() {
+		c.hub.unregister(c)
+		close(c.send)
+		_ = c.conn.Close()
+	})
+}
+
+func (c *wsClient) sendEnvelope(channel, eventType string, payload any) {
+	eventBytes, err := json.Marshal(wsEnvelope{
+		Channel:   channel,
+		Type:      eventType,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Payload:   payload,
+	})
+	if err != nil {
+		log.Printf("marshal websocket envelope failed: %v", err)
+		return
+	}
+	if !c.enqueue(eventBytes) {
+		c.close()
+	}
+}
+
+// enqueue is non-blocking so one slow client cannot block global broadcasts.
+func (c *wsClient) enqueue(payload []byte) bool {
+	select {
+	case c.send <- payload:
+		return true
+	default:
+		return false
+	}
+}
+
+func (c *wsClient) replaceSubscriptions(channels []string) {
+	next := make(map[string]struct{}, len(channels))
+	for _, channel := range channels {
+		next[channel] = struct{}{}
+	}
+
+	c.subscriptionsMu.Lock()
+	c.subscriptions = next
+	c.subscriptionsMu.Unlock()
+}
+
+func (c *wsClient) isSubscribed(channel string) bool {
+	c.subscriptionsMu.RLock()
+	_, ok := c.subscriptions[channel]
+	c.subscriptionsMu.RUnlock()
+	return ok
+}
+
+// normalizeWSChannels trims, validates, and de-duplicates user-supplied channels.
+func normalizeWSChannels(rawChannels []string) ([]string, error) {
+	if len(rawChannels) == 0 {
+		return nil, errors.New("at least one channel is required")
+	}
+
+	channels := make([]string, 0, len(rawChannels))
+	seen := make(map[string]struct{}, len(rawChannels))
+	for _, raw := range rawChannels {
+		channel := strings.TrimSpace(raw)
+		if channel == "" {
+			return nil, errors.New("channels must not contain empty values")
+		}
+		if _, allowed := allowedWSChannels[channel]; !allowed {
+			return nil, fmt.Errorf("unknown channel %q", channel)
+		}
+		if _, duplicate := seen[channel]; duplicate {
+			continue
+		}
+		seen[channel] = struct{}{}
+		channels = append(channels, channel)
+	}
+
+	return channels, nil
+}
+
+func containsChannel(channels []string, expected string) bool {
+	for _, channel := range channels {
+		if channel == expected {
+			return true
+		}
+	}
+	return false
+}
+
 // main is the app entry point.
 // It wires middleware, auth, storage, and routes, then starts the HTTP server.
 func main() {
@@ -155,7 +484,12 @@ func main() {
 		log.Printf("storage signer disabled: %v", err)
 	}
 
-	registerRoutes(r, authMiddleware, store, fileSigner)
+	realtime := newRealtimeHub()
+	// Emit periodic status events for clients subscribed to the status channel.
+	realtime.startStatusHeartbeat(30 * time.Second)
+	defer realtime.close()
+
+	registerRoutes(r, authMiddleware, store, fileSigner, realtime)
 
 	// Render provides PORT; default to 8080 for local.
 	port := strings.TrimSpace(os.Getenv("PORT"))
@@ -178,6 +512,7 @@ func registerRoutes(
 	authMiddleware gin.HandlerFunc,
 	store activityService,
 	fileSigner storageSigner,
+	realtime *realtimeHub,
 ) {
 	healthHandler := func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -267,6 +602,11 @@ func registerRoutes(
 				return
 			}
 
+			if realtime != nil {
+				// Creating an activity also publishes it to feed subscribers.
+				realtime.broadcastActivityCreated(a)
+			}
+
 			c.JSON(http.StatusCreated, a)
 		})
 
@@ -330,6 +670,13 @@ func registerRoutes(
 
 		files.POST("/upload-url", createSignedUploadURLHandler(fileSigner))
 		files.POST("/download-url", createSignedDownloadURLHandler(fileSigner))
+
+		if realtime != nil {
+			// Websocket handshake is protected by the same JWT middleware as HTTP routes.
+			ws := api.Group("/ws")
+			ws.Use(authMiddleware)
+			ws.GET("", realtime.serveWS)
+		}
 	}
 }
 

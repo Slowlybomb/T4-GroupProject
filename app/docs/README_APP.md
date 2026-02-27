@@ -18,10 +18,12 @@ For full step-by-step commands, see `app/docs/README.md`.
 ## Go API Env Snapshot (`app/api/.env.dev`)
 
 Required:
+
 - `DATABASE_URL` (or `DB_URL`)
 - `SUPABASE_JWKS_URL`
 
 Optional:
+
 - `SUPABASE_URL` (used to derive JWT issuer if `JWT_ISSUER` is not set)
 - `SUPABASE_SERVICE_ROLE_KEY` (required for `/api/v1/files/upload-url` and `/api/v1/files/download-url`)
 - `JWT_ISSUER`
@@ -70,6 +72,25 @@ make migrate-version
 - Signed URL API endpoints:
   - `POST /api/v1/files/upload-url`
   - `POST /api/v1/files/download-url`
+
+## Realtime WebSocket Notes
+
+- Realtime endpoint: `GET /api/v1/ws` (JWT required via `Authorization: Bearer <access_token>` on handshake).
+- Supported channels:
+  - `feed` (event: `activity.created`)
+  - `status` (events: `ws.connected`, `subscription.updated`, `status.heartbeat`, `error`)
+  - `notifications` (event: `notifications.placeholder`)
+- Client subscribe format:
+
+```json
+{"action":"subscribe","channels":["feed","status"]}
+```
+
+- Server event envelope format:
+
+```json
+{"channel":"feed","type":"activity.created","timestamp":"2026-02-27T17:00:00Z","payload":{}}
+```
 
 ## Testing Quick Check
 

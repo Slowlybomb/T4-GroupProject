@@ -40,8 +40,8 @@
 ## Realtime (WebSockets)
 
 - [x] Pick WebSocket library for Go
-- [ ] Define events/channels (live feed, status, notifications)
-- [ ] Secure socket handshake with JWT
+- [x] Define events/channels (live feed, status, notifications)
+- [x] Secure socket handshake with JWT
 
 ## Storage (Supabase Storage)
 
