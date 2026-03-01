@@ -1,6 +1,11 @@
 #include <Adafruit_ILI9341.h>
 #include <icons.h>
 void show_ui(Adafruit_ILI9341 tft) {
+  /* usage: show_ui(tft);
+     displays the UI for the user.
+     use tft.fillScreen(0x0000) to clear the display
+     before running show_ui(), then run show_ui() once.*/
+
   tft.drawBitmap(290, 9, image_battery_full_bits, 24, 13, 0xFFFF);
   tft.drawLine(1, 29, 319, 29, 0xFFFF);
   tft.drawLine(0, 169, 319, 169, 0xFFFF);
@@ -46,6 +51,13 @@ void show_ui(Adafruit_ILI9341 tft) {
 }
 
 void splashscreen(Adafruit_ILI9341& tft) {
+  /* usage: splashscreen(tft);
+     shows the gondolier hat logo, with the text "Gondolier" below it.
+     to be shown before the ui
+     in setup(), run something like splashscreen(tft); delay(3000); tft.fillScreen(0x0000); show_ui(tft) delay(3000);
+     to have a "boot up" sort of sequence.
+     adjust or remove delays accordingly. */
+
   display.drawBitmap(34, -40, image_gondolier_hat_bits, 255, 240, 0xFFFF);
 
   display.setTextColor(0xFFFF);
@@ -56,6 +68,10 @@ void splashscreen(Adafruit_ILI9341& tft) {
 }
 
 void update_timer(Adafruit_ILI9341& tft, String time) {
+  /* usage: update_timer(tft, "00:00:02");
+     clears the portion of the display where the
+     timer is and redraws it with the new time */
+
   tft.fillRect(186, 186, 130, 26, 0x0000);
   tft.setTextSize(3);
   tft.setFont(&Org_01);
@@ -64,6 +80,9 @@ void update_timer(Adafruit_ILI9341& tft, String time) {
 }
 
 void update_split(Adafruit_ILI9341& tft, String split) {
+  /* usage: update_split(tft, "2:34");
+     clears the portion of the display where the split
+     time is and redraws it with the new split time */
   tft.fillRect(4, 186, 106, 26, 0x0000);
   tft.setTextSize(4);
   tft.setFont(&Org_01);
@@ -72,6 +91,9 @@ void update_split(Adafruit_ILI9341& tft, String split) {
 }
 
 void update_strokes(Adafruit_ILI9341& tft, String strokes) {
+  /* usage: update_strokes(tft, "14");
+     clears the portion of the display where the strokes are
+     and redraws it with the updated stroke count */
   tft.fillRect(44, 44, 240, 102, 0x0000);
   tft.setTextColor(0xFFFF);
   tft.setTextSize(20);
@@ -106,6 +128,8 @@ void update_strokes(Adafruit_ILI9341& tft, String strokes) {
 }
 
 void update_screen(Adafruit_ILI9341& tft, String strokes, String split, String time) {
+  /* usage: update_screen(tft, "14", "2:34", "00:00:02");
+     combines all previous functions into one for ease of use */
   update_strokes(tft, strokes);
   update_split(tft, split);
   update_timer(tft, time);
