@@ -1,25 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/locator.dart';
 import '../../../core/theme/app_colour_theme.dart';
 import '../../../core/widgets/primarybutton.dart';
+import '../../../data/repositories/auth_repository.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onLoginSuccess;
+  final AuthRepository? authRepository;
 
-  const LoginScreen({super.key, required this.onLoginSuccess});
+  const LoginScreen({
+    super.key,
+    required this.onLoginSuccess,
+    this.authRepository,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  late final AuthRepository _authRepository;
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _isLoading = false;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _authRepository = widget.authRepository ?? Locator.authRepository;
+  }
 
   @override
   void dispose() {
@@ -41,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await Supabase.instance.client.auth.signInWithPassword(
+      await _authRepository.signIn(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
@@ -50,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       // Parent widget controls route/state after successful authentication.
       widget.onLoginSuccess();
-    } on AuthException catch (error) {
+    } on AuthFailure catch (error) {
       if (!mounted) {
         return;
       }

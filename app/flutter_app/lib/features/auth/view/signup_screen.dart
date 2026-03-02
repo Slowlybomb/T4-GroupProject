@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/config/auth_config.dart';
+import '../../../core/locator.dart';
 import '../../../core/theme/app_colour_theme.dart';
 import '../../../core/widgets/primarybutton.dart';
+import '../../../data/repositories/auth_repository.dart';
 
 class SignUpScreen extends StatefulWidget {
   final VoidCallback onSignUpSuccess;
+  final AuthRepository? authRepository;
 
-  const SignUpScreen({super.key, required this.onSignUpSuccess});
+  const SignUpScreen({
+    super.key,
+    required this.onSignUpSuccess,
+    this.authRepository,
+  });
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  late final AuthRepository _authRepository;
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -23,6 +31,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   String? _infoMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _authRepository = widget.authRepository ?? Locator.authRepository;
+  }
 
   @override
   void dispose() {
@@ -47,17 +61,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
-      final response = await Supabase.instance.client.auth.signUp(
+      final result = await _authRepository.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
-        data: {'full_name': _nameController.text.trim()},
+        fullName: _nameController.text.trim(),
+        emailRedirectTo: AuthConfig.callbackUrl,
       );
 
       if (!mounted) {
         return;
       }
 
-      if (response.session != null) {
+      if (result == SignUpResult.signedIn) {
         widget.onSignUpSuccess();
       } else {
         // Supabase may require email confirmation before creating a session.
@@ -66,7 +81,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               'Account created. Check your email to verify before logging in.';
         });
       }
-    } on AuthException catch (error) {
+    } on AuthFailure catch (error) {
       if (!mounted) {
         return;
       }

@@ -3,19 +3,29 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/locator.dart';
 import 'core/theme/app_colour_theme.dart';
+import 'data/repositories/auth_repository.dart';
 import 'features/onboarding/view/onboarding_screen.dart';
 import 'features/auth/view/auth_screen.dart';
 import 'features/dashboard/view/dashboard_screen.dart';
 
 class RowingApp extends StatefulWidget {
-  const RowingApp({super.key});
+  final AuthRepository? authRepository;
+  final bool initialOnboardingFinished;
+
+  const RowingApp({
+    super.key,
+    this.authRepository,
+    this.initialOnboardingFinished = false,
+  });
 
   @override
   State<RowingApp> createState() => _RowingAppState();
 }
 
 class _RowingAppState extends State<RowingApp> {
+  late final AuthRepository _authRepository;
   bool _isOnboardingFinished = false;
   bool _isLoggedIn = false;
   StreamSubscription<AuthState>? _authStateSubscription;
@@ -23,12 +33,14 @@ class _RowingAppState extends State<RowingApp> {
   @override
   void initState() {
     super.initState();
-    final auth = Supabase.instance.client.auth;
+    _authRepository = widget.authRepository ?? Locator.authRepository;
+    _isOnboardingFinished = widget.initialOnboardingFinished;
+
     // Restore persisted auth state on app launch.
-    _isLoggedIn = auth.currentSession != null;
+    _isLoggedIn = _authRepository.isLoggedIn;
 
     // Keep UI routing in sync with sign-in/sign-out events.
-    _authStateSubscription = auth.onAuthStateChange.listen((event) {
+    _authStateSubscription = _authRepository.authStateChanges().listen((event) {
       if (!mounted) {
         return;
       }
@@ -54,6 +66,7 @@ class _RowingAppState extends State<RowingApp> {
           ? (_isLoggedIn
                 ? const MainNavigationHub()
                 : AuthScreen(
+                    authRepository: _authRepository,
                     onLoginSuccess: () {
                       setState(() => _isLoggedIn = true);
                     },

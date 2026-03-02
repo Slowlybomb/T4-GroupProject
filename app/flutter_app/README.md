@@ -33,6 +33,12 @@ flutter run \
   - Immediate session created: user is treated as logged in
   - Email confirmation required: user sees an info message to verify email
 
+## Deep-Link Verification Setup (Android)
+
+The app uses this auth callback URL:
+
+- `com.example.flutter_app://login-callback`
+
 ## Tests
 
 Run all tests:

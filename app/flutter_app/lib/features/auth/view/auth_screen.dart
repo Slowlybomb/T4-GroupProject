@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_colour_theme.dart';
+import '../../../data/repositories/auth_repository.dart';
 import 'login_screen.dart';
 import 'signup_screen.dart';
 import '../widgets/login_clipper.dart';
@@ -7,11 +9,13 @@ import '../widgets/login_clipper.dart';
 class AuthScreen extends StatefulWidget {
   final VoidCallback onLoginSuccess;
   final VoidCallback onSignUpSuccess;
+  final AuthRepository? authRepository;
 
   const AuthScreen({
     super.key,
     required this.onLoginSuccess,
     required this.onSignUpSuccess,
+    this.authRepository,
   });
 
   @override
@@ -73,10 +77,12 @@ class _AuthScreenState extends State<AuthScreen> {
                         ? LoginScreen(
                             key: const ValueKey('login-form'),
                             onLoginSuccess: widget.onLoginSuccess,
+                            authRepository: widget.authRepository,
                           )
                         : SignUpScreen(
                             key: const ValueKey('signup-form'),
                             onSignUpSuccess: widget.onSignUpSuccess,
+                            authRepository: widget.authRepository,
                           ),
                   ),
                   const SizedBox(height: 24),
