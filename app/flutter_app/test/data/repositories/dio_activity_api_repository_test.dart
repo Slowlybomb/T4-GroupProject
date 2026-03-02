@@ -43,11 +43,17 @@ Map<String, dynamic> _activityJson({required String id, int likes = 0}) {
 DioActivityApiRepository _buildRepository({
   required FakeHttpClientAdapter adapter,
   String? token,
+  Future<Object?> Function()? loadDefaultRouteGeoJson,
 }) {
   final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'));
   dio.httpClientAdapter = adapter;
   dio.interceptors.add(AuthInterceptor(_FakeAuthTokenProvider(token)));
-  return DioActivityApiRepository(dio);
+  return DioActivityApiRepository(
+    dio,
+    loadDefaultRouteGeoJson:
+        loadDefaultRouteGeoJson ??
+        () async => <String, dynamic>{'type': 'FeatureCollection'},
+  );
 }
 
 void main() {
@@ -110,6 +116,11 @@ void main() {
       expect(requestBody['title'], 'Test activity');
       expect(requestBody['visibility'], 'public');
       expect(requestBody.containsKey('start_time'), isTrue);
+      expect(requestBody.containsKey('route_geojson'), isTrue);
+      expect(
+        Map<String, dynamic>.from(requestBody['route_geojson'] as Map)['type'],
+        'FeatureCollection',
+      );
     });
 
     test('maps 401 response to ApiError.unauthorized', () async {
@@ -152,6 +163,48 @@ void main() {
               .having((error) => error.type, 'type', ApiErrorType.badRequest)
               .having((error) => error.statusCode, 'statusCode', 400),
         ),
+      );
+    });
+
+    test('keeps explicit route_geojson when request provides one', () async {
+      final adapter = FakeHttpClientAdapter({
+        'POST /api/v1/activities': StubResponse(
+          statusCode: 201,
+          data: _activityJson(id: 'cccccccc-cccc-cccc-cccc-cccccccccccc'),
+        ),
+      });
+
+      final repository = _buildRepository(
+        adapter: adapter,
+        token: 'valid-token',
+        loadDefaultRouteGeoJson: () async => <String, dynamic>{
+          'type': 'FeatureCollection',
+        },
+      );
+
+      const explicitRoute = <String, dynamic>{
+        'type': 'FeatureCollection',
+        'features': <Object>[],
+        'source': 'explicit',
+      };
+
+      await repository.createActivity(
+        CreateActivityRequestDto(
+          title: 'Custom route',
+          startTime: DateTime.parse('2026-01-01T10:00:00Z'),
+          visibility: 'public',
+          routeGeoJson: explicitRoute,
+        ),
+      );
+
+      final requestBody = Map<String, dynamic>.from(
+        adapter.requests.single.data as Map,
+      );
+      expect(
+        Map<String, dynamic>.from(
+          requestBody['route_geojson'] as Map,
+        )['source'],
+        'explicit',
       );
     });
   });
