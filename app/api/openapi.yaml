@@ -28,6 +28,7 @@ tags:
   - name: feed
   - name: metrics
   - name: files
+  - name: realtime
 security:
   - bearerAuth: []
 paths:
@@ -354,6 +355,42 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
         "422":
           $ref: "#/components/responses/ValidationError"
+
+  /api/v1/ws:
+    get:
+      tags: [realtime]
+      summary: Open authenticated realtime WebSocket
+      operationId: connectRealtime
+      description: |
+        Upgrades the request to a WebSocket connection.
+        Clients must send a JWT bearer token and then subscribe:
+        `{"action":"subscribe","channels":["feed","status"]}`.
+        Server messages use the envelope
+        `{ "channel", "type", "timestamp", "payload" }`.
+      responses:
+        "101":
+          description: Switching protocols to WebSocket
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+      x-websocket-channels:
+        - name: feed
+          events:
+            - type: activity.created
+              description: Emitted after activity creation succeeds.
+        - name: status
+          events:
+            - type: ws.connected
+              description: Sent immediately after connection.
+            - type: subscription.updated
+              description: Sent after successful subscribe action.
+            - type: status.heartbeat
+              description: Periodic server heartbeat with online client count.
+            - type: error
+              description: Sent when message/action validation fails.
+        - name: notifications
+          events:
+            - type: notifications.placeholder
+              description: Placeholder event until notification producers are added.
 
 components:
   securitySchemes:
@@ -869,3 +906,34 @@ components:
         expires_at:
           type: string
           format: date-time
+
+    WSSubscribeRequest:
+      type: object
+      required: [action, channels]
+      properties:
+        action:
+          type: string
+          enum: [subscribe]
+        channels:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum: [feed, status, notifications]
+
+    WSEventEnvelope:
+      type: object
+      required: [channel, type, timestamp]
+      properties:
+        channel:
+          type: string
+          enum: [feed, status, notifications]
+        type:
+          type: string
+          example: activity.created
+        timestamp:
+          type: string
+          format: date-time
+        payload:
+          type: object
+          additionalProperties: true
