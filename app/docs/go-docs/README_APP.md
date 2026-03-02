@@ -15,6 +15,24 @@ For full step-by-step commands, see `app/docs/README.md`.
 - Use Supabase Session Pooler connection string for local migrations.
 - No local Postgres container is required right now.
 
+## Implemented Endpoints (Current Backend Source of Truth)
+
+Flutter integration should use currently implemented Go routes:
+
+- `GET /health` (public)
+- `GET /api/v1/health` (public)
+- `GET /api/v1/activities` (auth required)
+- `POST /api/v1/activities` (auth required)
+- `GET /api/v1/activities/:id` (auth required)
+- `PATCH /api/v1/activities/:id/like` (auth required)
+- `POST /api/v1/files/upload-url` (auth required)
+- `POST /api/v1/files/download-url` (auth required)
+- `GET /api/v1/ws` (auth required)
+
+Known gap:
+- `app/api/openapi.yaml` still documents future naming such as `/workouts` and `/feed`.
+- Do not rename backend routes in this slice; align OpenAPI in a follow-up task.
+
 ## Go API Env Snapshot (`app/api/.env.dev`)
 
 Required:
