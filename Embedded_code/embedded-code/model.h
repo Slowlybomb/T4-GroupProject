@@ -27,7 +27,8 @@ static uint8_t* _tensorArena = nullptr;
 static float* _modelInputBuf = nullptr;
 
 // some stuff the internet says will make it use less ram. idk???
-using MyOpResolver = tflite::MicroMutableOpResolver<20>;
+// After extensive research, we discovered this does indeed slightly reduce ram usage. Yippee.
+using MyOpResolver = tflite::MicroMutableOpResolver<6>;
 static MyOpResolver _resolver;
 
 // TFLite runtime state
@@ -62,26 +63,12 @@ bool model_init() {
   }
 
   // Register ops used by the model
-  _resolver.AddExpandDims();
   _resolver.AddConv2D();
-  _resolver.AddDepthwiseConv2D();
+  _resolver.AddMaxPool2D();
+  _resolver.AddReshape();
   _resolver.AddFullyConnected();
   _resolver.AddRelu();
-  _resolver.AddRelu6();
   _resolver.AddLogistic();
-  _resolver.AddSoftmax();
-  _resolver.AddReshape();
-  _resolver.AddMaxPool2D();
-  _resolver.AddMean();
-  _resolver.AddUnidirectionalSequenceLSTM();
-  _resolver.AddStridedSlice();
-  _resolver.AddPad();
-  _resolver.AddAdd();
-  _resolver.AddMul();
-  _resolver.AddQuantize();
-  _resolver.AddDequantize();
-  _resolver.AddShape();
-  _resolver.AddSqueeze();
 
   _tfModel = tflite::GetModel(model_tflite);
   if (_tfModel->version() != TFLITE_SCHEMA_VERSION) {
