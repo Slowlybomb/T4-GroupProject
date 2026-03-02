@@ -15,6 +15,19 @@ Success means: same onboarding/feed/stats behavior, cleaner boundaries, centrali
 - [ ] Add `OnboardingController` (`ChangeNotifier`) with APIs: `setGender(...)`, `setAge(...)`, `setWeight(...)`, `buildProfile()`.
 - [ ] Add domain models: `Post`, `UserStats`, `OnboardingProfile`.
 
+### Server Connection Interfaces Added (2026-03-02)
+
+- [x] Add `RuntimeConfig` in `lib/core/config/runtime_config.dart` using `API_BASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`.
+- [x] Add `AuthTokenProvider` (`SupabaseAuthTokenProvider`) in `lib/core/network/auth_token_provider.dart`.
+- [x] Add `ApiClient` (Dio wrapper) in `lib/core/network/api_client.dart`.
+- [x] Add `AuthInterceptor` in `lib/core/network/auth_interceptor.dart` with public health-route bypass.
+- [x] Add `ApiError` mapper in `lib/core/network/api_error.dart`.
+- [x] Add `ActivityDto` and `CreateActivityRequestDto` in `lib/data/models/`.
+- [x] Add `ActivityApiRepository` contract in `lib/data/repositories/activity_api_repository.dart`.
+- [x] Add `DioActivityApiRepository` implementation in `lib/data/repositories/dio_activity_api_repository.dart`.
+- [x] Update `FeedRepository` to use `ActivityApiRepository` with optional local fallback.
+- [x] Add `AppDependencies` wiring in `lib/core/locator.dart`.
+
 ## Milestone Checklist
 
 ## 1. Baseline and Safety
@@ -28,7 +41,7 @@ Success means: same onboarding/feed/stats behavior, cleaner boundaries, centrali
 
 - [ ] Create `lib/app`, `lib/core`, and `lib/features` directory tree.
 - [ ] Move app root widget from `main.dart` into `lib/app/app.dart`.
-- [ ] Keep `lib/main.dart` as bootstrap-only entrypoint.
+- [x] Keep `lib/main.dart` as bootstrap-only entrypoint.
 - [ ] Extract theme to `lib/app/theme.dart`.
 - [ ] Ensure app still runs with identical startup route.
 
@@ -87,9 +100,20 @@ Success means: same onboarding/feed/stats behavior, cleaner boundaries, centrali
 - [ ] Update project docs with new architecture diagram and state flow notes.
 - [ ] Add PR checklist item: “Any new code follows feature-first structure”.
 
+## 10. Server Connection Ownership Slice (Activities Core)
+
+- [x] Lock backend source-of-truth endpoints to implemented Go routes (`/api/v1/activities*`) and document OpenAPI mismatch.
+- [x] Initialize Supabase in app bootstrap and validate required `--dart-define` config at startup.
+- [x] Add token injection via auth-aware Dio interceptor for protected endpoints.
+- [x] Implement activities API calls: list/create/get/like.
+- [x] Add typed API DTO parsing with nullable handling and UI-model adapter mapping.
+- [x] Add fallback behavior toggle (`USE_LOCAL_FEED_FALLBACK`) for demo/offline mode.
+- [x] Add backend-connection tests for interceptor behavior, DTO parsing, and repository error mapping.
+- [x] Run Flutter tests for this slice and keep them green.
+
 ## Acceptance Criteria
 
-- [ ] `lib/main.dart` contains only bootstrap/setup.
+- [x] `lib/main.dart` contains only bootstrap/setup.
 - [ ] No onboarding/feed/stats UI classes remain in `main.dart`.
 - [ ] Existing behavior is unchanged for onboarding, feed detail overlay, and stats navigation.
 - [ ] Route and provider setup are centralized under `lib/app/`.
@@ -109,5 +133,7 @@ Success means: same onboarding/feed/stats behavior, cleaner boundaries, centrali
 - Keep `provider` as the state management solution for now.
 - Keep Navigator-based routing in this refactor.
 - Prioritize incremental moves over big-bang rewrites.
-- Use local/mock repository implementations only (no backend integration in this phase).
+- Activities core now supports backend integration via Dio + Supabase access tokens.
+- File upload/download and WebSocket integration are deferred to phase 2.
+- Keep `USE_LOCAL_FEED_FALLBACK` for optional local/demo feed fallback.
 - One-class-per-file rule applies to screens, controllers, repositories, and models.
