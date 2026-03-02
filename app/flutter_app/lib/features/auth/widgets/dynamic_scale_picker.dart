@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '/../../core/widgets/navigation_row.dart';
+import '../../../core/widgets/navigation_row.dart';
 
 class DynamicScalePicker extends StatefulWidget {
   final String title, unit;
