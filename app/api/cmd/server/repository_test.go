@@ -96,6 +96,9 @@ func TestScanActivityPopulatedFields(t *testing.T) {
 		values: []any{
 			"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
 			"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+			sql.NullString{String: "hugo", Valid: true},
+			sql.NullString{String: "Hugo", Valid: true},
+			sql.NullString{String: "https://example.com/avatar.png", Valid: true},
 			sql.NullString{String: "Morning row", Valid: true},
 			sql.NullString{String: "Strong headwind", Valid: true},
 			start,
@@ -119,6 +122,15 @@ func TestScanActivityPopulatedFields(t *testing.T) {
 
 	if activity.ID == "" || activity.UserID == "" {
 		t.Fatal("expected non-empty id and user_id")
+	}
+	if activity.Username == nil || *activity.Username != "hugo" {
+		t.Fatalf("unexpected username: %#v", activity.Username)
+	}
+	if activity.DisplayName == nil || *activity.DisplayName != "Hugo" {
+		t.Fatalf("unexpected display name: %#v", activity.DisplayName)
+	}
+	if activity.AvatarURL == nil || *activity.AvatarURL == "" {
+		t.Fatalf("unexpected avatar url: %#v", activity.AvatarURL)
 	}
 	if activity.Title == nil || *activity.Title != "Morning row" {
 		t.Fatalf("unexpected title: %#v", activity.Title)
@@ -153,6 +165,9 @@ func TestScanActivityNullOptionalFields(t *testing.T) {
 			"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
 			sql.NullString{Valid: false},
 			sql.NullString{Valid: false},
+			sql.NullString{Valid: false},
+			sql.NullString{Valid: false},
+			sql.NullString{Valid: false},
 			start,
 			sql.NullInt32{Valid: false},
 			sql.NullFloat64{Valid: false},
@@ -174,6 +189,9 @@ func TestScanActivityNullOptionalFields(t *testing.T) {
 
 	if activity.Title != nil || activity.Notes != nil {
 		t.Fatal("expected nil title/notes for NULL DB values")
+	}
+	if activity.Username != nil || activity.DisplayName != nil || activity.AvatarURL != nil {
+		t.Fatal("expected nil profile fields for NULL DB values")
 	}
 	if activity.DurationSeconds != nil || activity.DistanceM != nil {
 		t.Fatal("expected nil numeric pointers for NULL DB values")

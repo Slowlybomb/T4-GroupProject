@@ -32,7 +32,7 @@ class RuntimeConfig {
       useLocalFeedFallback: _parseBool(
         const String.fromEnvironment(
           _useLocalFeedFallbackKey,
-          defaultValue: 'true',
+          defaultValue: 'false',
         ),
       ),
     );

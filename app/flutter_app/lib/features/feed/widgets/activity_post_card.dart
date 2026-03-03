@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+
+import '../../../data/models/activity_model.dart';
 import 'post_user_header.dart' as post_header;
 import 'post_stats_row.dart' as post_stats;
 
 class ActivityPostCard extends StatelessWidget {
-  const ActivityPostCard({super.key});
+  final ActivityModel activity;
+
+  const ActivityPostCard({super.key, required this.activity});
 
   @override
   Widget build(BuildContext context) {
@@ -18,23 +22,30 @@ class ActivityPostCard extends StatelessWidget {
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 5),
-          )
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ADDED PREFIX HERE
-          const post_header.PostUserHeader(name: 'Hugo', timeAgo: '2h ago'),
-          const Padding(
+          post_header.PostUserHeader(
+            name: activity.userName,
+            timeAgo: activity.timestamp,
+            avatarUrl: activity.avatarUrl,
+          ),
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 12.0),
             child: Text(
-              'Hard session on the ergometer today!',
+              activity.title,
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ),
-          // ADDED PREFIX HERE
-          const post_stats.PostStatsRow(),
+          post_stats.PostStatsRow(
+            distance: activity.distance,
+            duration: activity.duration,
+            avgSplit: activity.avgSplit,
+            strokeRate: activity.strokeRate,
+          ),
           const SizedBox(height: 15),
           // Map Placeholder
           Container(
@@ -47,7 +58,7 @@ class ActivityPostCard extends StatelessWidget {
             child: const Icon(Icons.map_outlined, color: Colors.blue, size: 40),
           ),
           const SizedBox(height: 15),
-          const _PostActions(),
+          _PostActions(likes: activity.likes),
         ],
       ),
     );
@@ -55,18 +66,21 @@ class ActivityPostCard extends StatelessWidget {
 }
 
 class _PostActions extends StatelessWidget {
-  const _PostActions();
+  final int likes;
+
+  const _PostActions({required this.likes});
+
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: const [
-        Icon(Icons.favorite_border, color: Colors.red, size: 20),
-        SizedBox(width: 5),
-        Text('12', style: TextStyle(fontSize: 12)),
-        SizedBox(width: 15),
-        Icon(Icons.chat_bubble_outline, color: Colors.grey, size: 20),
-        Spacer(),
-        Icon(Icons.share_outlined, color: Colors.grey, size: 20),
+      children: [
+        const Icon(Icons.favorite_border, color: Colors.red, size: 20),
+        const SizedBox(width: 5),
+        Text('$likes', style: const TextStyle(fontSize: 12)),
+        const SizedBox(width: 15),
+        const Icon(Icons.chat_bubble_outline, color: Colors.grey, size: 20),
+        const Spacer(),
+        const Icon(Icons.share_outlined, color: Colors.grey, size: 20),
       ],
     );
   }

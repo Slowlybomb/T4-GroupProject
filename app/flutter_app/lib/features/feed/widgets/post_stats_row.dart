@@ -1,17 +1,28 @@
 import 'package:flutter/material.dart';
 
 class PostStatsRow extends StatelessWidget {
-  const PostStatsRow({super.key});
+  final String distance;
+  final String duration;
+  final String avgSplit;
+  final String strokeRate;
+
+  const PostStatsRow({
+    super.key,
+    this.distance = '--',
+    this.duration = '--',
+    this.avgSplit = '--',
+    this.strokeRate = '--',
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: const [
-        _StatTile(label: 'Distance', value: '33.2km'),
-        _StatTile(label: 'Time', value: '1h 12m'),
-        _StatTile(label: 'Avg Split', value: '2:10'),
-        _StatTile(label: 'Strokes', value: '24 s/m'),
+      children: [
+        _StatTile(label: 'Distance', value: distance),
+        _StatTile(label: 'Time', value: duration),
+        _StatTile(label: 'Avg Split', value: avgSplit),
+        _StatTile(label: 'Strokes', value: strokeRate),
       ],
     );
   }
@@ -27,7 +38,10 @@ class _StatTile extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-        Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        ),
       ],
     );
   }

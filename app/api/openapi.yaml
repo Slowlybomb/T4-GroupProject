@@ -549,6 +549,19 @@ components:
         user_id:
           type: string
           format: uuid
+        username:
+          type: string
+          nullable: true
+          description: Username from the activity owner's profile.
+        display_name:
+          type: string
+          nullable: true
+          description: Display name from the activity owner's profile.
+        avatar_url:
+          type: string
+          format: uri
+          nullable: true
+          description: Avatar URL from the activity owner's profile.
         title:
           type: string
           nullable: true

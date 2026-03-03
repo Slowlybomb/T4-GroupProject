@@ -12,6 +12,11 @@ typedef SignUpHandler =
       required String fullName,
       required String emailRedirectTo,
     });
+typedef ResendSignUpVerificationEmailHandler =
+    Future<void> Function({
+      required String email,
+      required String emailRedirectTo,
+    });
 
 class FakeAuthRepository implements AuthRepository {
   FakeAuthRepository({
@@ -19,19 +24,23 @@ class FakeAuthRepository implements AuthRepository {
     StreamController<AuthState>? authStateController,
     SignInHandler? onSignIn,
     SignUpHandler? onSignUp,
+    ResendSignUpVerificationEmailHandler? onResendSignUpVerificationEmail,
   }) : _isLoggedIn = isLoggedIn,
        _authStateController =
            authStateController ?? StreamController<AuthState>.broadcast(),
        _onSignIn = onSignIn,
-       _onSignUp = onSignUp;
+       _onSignUp = onSignUp,
+       _onResendSignUpVerificationEmail = onResendSignUpVerificationEmail;
 
   bool _isLoggedIn;
   final StreamController<AuthState> _authStateController;
   final SignInHandler? _onSignIn;
   final SignUpHandler? _onSignUp;
+  final ResendSignUpVerificationEmailHandler? _onResendSignUpVerificationEmail;
 
   int signInCallCount = 0;
   int signUpCallCount = 0;
+  int resendSignUpVerificationEmailCallCount = 0;
 
   String? lastSignInEmail;
   String? lastSignInPassword;
@@ -40,6 +49,8 @@ class FakeAuthRepository implements AuthRepository {
   String? lastSignUpPassword;
   String? lastSignUpFullName;
   String? lastSignUpRedirectTo;
+  String? lastResendSignUpVerificationEmail;
+  String? lastResendSignUpRedirectTo;
 
   @override
   bool get isLoggedIn => _isLoggedIn;
@@ -86,6 +97,23 @@ class FakeAuthRepository implements AuthRepository {
     }
 
     return SignUpResult.verificationEmailSent;
+  }
+
+  @override
+  Future<void> resendSignUpVerificationEmail({
+    required String email,
+    required String emailRedirectTo,
+  }) async {
+    resendSignUpVerificationEmailCallCount += 1;
+    lastResendSignUpVerificationEmail = email;
+    lastResendSignUpRedirectTo = emailRedirectTo;
+
+    if (_onResendSignUpVerificationEmail != null) {
+      await _onResendSignUpVerificationEmail(
+        email: email,
+        emailRedirectTo: emailRedirectTo,
+      );
+    }
   }
 
   Future<void> emit(AuthState state) async {

@@ -3,6 +3,9 @@ import 'activity_model.dart';
 class ActivityDto {
   final String id;
   final String userId;
+  final String? username;
+  final String? displayName;
+  final String? avatarUrl;
   final String? title;
   final String? notes;
   final DateTime startTime;
@@ -20,6 +23,9 @@ class ActivityDto {
   const ActivityDto({
     required this.id,
     required this.userId,
+    this.username,
+    this.displayName,
+    this.avatarUrl,
     required this.title,
     required this.notes,
     required this.startTime,
@@ -61,6 +67,9 @@ class ActivityDto {
     return ActivityDto(
       id: id,
       userId: userId,
+      username: _stringOrNull(json['username']),
+      displayName: _stringOrNull(json['display_name']),
+      avatarUrl: _normalizeAvatarUrl(_stringOrNull(json['avatar_url'])),
       title: _stringOrNull(json['title']),
       notes: _stringOrNull(json['notes']),
       startTime: DateTime.parse(startTimeRaw),
@@ -80,7 +89,12 @@ class ActivityDto {
   ActivityModel toActivityModel() {
     // Adapter layer: keep existing UI model stable while backend schema evolves.
     return ActivityModel(
-      userName: _displayNameFromUserId(userId),
+      userName: _resolveDisplayName(
+        displayName: displayName,
+        username: username,
+        userId: userId,
+      ),
+      avatarUrl: avatarUrl,
       timestamp: _formatTimestamp(startTime),
       title: title?.trim().isNotEmpty == true
           ? title!.trim()
@@ -91,6 +105,21 @@ class ActivityDto {
       strokeRate: _formatStrokeRate(avgStrokeSpm),
       likes: likes,
     );
+  }
+
+  static String _resolveDisplayName({
+    required String userId,
+    String? displayName,
+    String? username,
+  }) {
+    if (displayName != null && displayName.trim().isNotEmpty) {
+      return displayName.trim();
+    }
+    if (username != null && username.trim().isNotEmpty) {
+      return username.trim();
+    }
+
+    return _displayNameFromUserId(userId);
   }
 
   static String _displayNameFromUserId(String value) {
@@ -192,5 +221,23 @@ class ActivityDto {
 
   static int _intOrZero(Object? value) {
     return _intOrNull(value) ?? 0;
+  }
+
+  static String? _normalizeAvatarUrl(String? value) {
+    if (value == null) {
+      return null;
+    }
+
+    final uri = Uri.tryParse(value);
+    if (uri == null || uri.host.trim().isEmpty) {
+      return null;
+    }
+
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme != 'http' && scheme != 'https') {
+      return null;
+    }
+
+    return value;
   }
 }

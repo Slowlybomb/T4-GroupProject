@@ -29,8 +29,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isResendingVerificationEmail = false;
   String? _errorMessage;
   String? _infoMessage;
+  String? _pendingVerificationEmail;
 
   @override
   void initState() {
@@ -54,15 +56,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
+    final signUpEmail = _emailController.text.trim();
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
       _infoMessage = null;
+      _pendingVerificationEmail = null;
     });
 
     try {
       final result = await _authRepository.signUp(
-        email: _emailController.text.trim(),
+        email: signUpEmail,
         password: _passwordController.text,
         fullName: _nameController.text.trim(),
         emailRedirectTo: AuthConfig.callbackUrl,
@@ -77,6 +82,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       } else {
         // Supabase may require email confirmation before creating a session.
         setState(() {
+          _pendingVerificationEmail = signUpEmail;
           _infoMessage =
               'Account created. Check your email to verify before logging in.';
         });
@@ -94,6 +100,50 @@ class _SignUpScreenState extends State<SignUpScreen> {
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _resendVerificationEmail() async {
+    final email = _pendingVerificationEmail;
+    if (email == null || email.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _isResendingVerificationEmail = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _authRepository.resendSignUpVerificationEmail(
+        email: email,
+        emailRedirectTo: AuthConfig.callbackUrl,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _infoMessage = 'Verification email resent. Check your inbox.';
+      });
+    } on AuthFailure catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _errorMessage = error.message);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(
+        () => _errorMessage =
+            'Unable to resend verification email. Please try again.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isResendingVerificationEmail = false);
       }
     }
   }
@@ -150,6 +200,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 color: Colors.white,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+          if (_pendingVerificationEmail != null) ...[
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: _isResendingVerificationEmail
+                    ? null
+                    : _resendVerificationEmail,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.white,
+                  padding: EdgeInsets.zero,
+                ),
+                child: Text(
+                  _isResendingVerificationEmail
+                      ? 'Resending...'
+                      : 'Resend verification email',
+                ),
               ),
             ),
           ],

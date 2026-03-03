@@ -11,12 +11,18 @@ typedef SignUpWithPassword =
       required String emailRedirectTo,
       required Map<String, dynamic> data,
     });
+typedef ResendSignUpVerificationEmail =
+    Future<void> Function({
+      required String email,
+      required String emailRedirectTo,
+    });
 typedef CurrentSessionReader = Session? Function();
 typedef AuthStateStreamReader = Stream<AuthState> Function();
 
 class SupabaseAuthRepository implements AuthRepository {
   final SignInWithPassword _signInWithPassword;
   final SignUpWithPassword _signUpWithPassword;
+  final ResendSignUpVerificationEmail _resendSignUpVerificationEmail;
   final CurrentSessionReader _currentSessionReader;
   final AuthStateStreamReader _authStateStreamReader;
 
@@ -37,6 +43,14 @@ class SupabaseAuthRepository implements AuthRepository {
             emailRedirectTo: emailRedirectTo,
             data: data,
           )),
+      _resendSignUpVerificationEmail =
+          (({required String email, required String emailRedirectTo}) async {
+            await supabaseClient.auth.resend(
+              email: email,
+              type: OtpType.signup,
+              emailRedirectTo: emailRedirectTo,
+            );
+          }),
       _currentSessionReader = (() => supabaseClient.auth.currentSession),
       _authStateStreamReader = (() => supabaseClient.auth.onAuthStateChange);
 
@@ -45,10 +59,12 @@ class SupabaseAuthRepository implements AuthRepository {
   const SupabaseAuthRepository.test({
     required SignInWithPassword signInWithPassword,
     required SignUpWithPassword signUpWithPassword,
+    required ResendSignUpVerificationEmail resendSignUpVerificationEmail,
     required CurrentSessionReader currentSessionReader,
     required AuthStateStreamReader authStateStreamReader,
   }) : _signInWithPassword = signInWithPassword,
        _signUpWithPassword = signUpWithPassword,
+       _resendSignUpVerificationEmail = resendSignUpVerificationEmail,
        _currentSessionReader = currentSessionReader,
        _authStateStreamReader = authStateStreamReader;
 
@@ -63,7 +79,7 @@ class SupabaseAuthRepository implements AuthRepository {
     try {
       await _signInWithPassword(email: email, password: password);
     } on AuthException catch (error) {
-      throw AuthFailure(_mapAuthErrorMessage(error.message));
+      throw AuthFailure(_mapAuthErrorMessage(error));
     } catch (_) {
       throw const AuthFailure('Unable to sign in. Please try again.');
     }
@@ -88,14 +104,42 @@ class SupabaseAuthRepository implements AuthRepository {
           ? SignUpResult.verificationEmailSent
           : SignUpResult.signedIn;
     } on AuthException catch (error) {
-      throw AuthFailure(_mapAuthErrorMessage(error.message));
+      throw AuthFailure(_mapAuthErrorMessage(error));
     } catch (_) {
       throw const AuthFailure('Unable to sign up. Please try again.');
     }
   }
 
-  String _mapAuthErrorMessage(String rawMessage) {
+  @override
+  Future<void> resendSignUpVerificationEmail({
+    required String email,
+    required String emailRedirectTo,
+  }) async {
+    try {
+      await _resendSignUpVerificationEmail(
+        email: email,
+        emailRedirectTo: emailRedirectTo,
+      );
+    } on AuthException catch (error) {
+      throw AuthFailure(_mapAuthErrorMessage(error));
+    } catch (_) {
+      throw const AuthFailure(
+        'Unable to resend verification email. Please try again.',
+      );
+    }
+  }
+
+  String _mapAuthErrorMessage(AuthException error) {
+    final rawMessage = error.message;
     final message = rawMessage.toLowerCase();
+    final code = (error.code ?? '').toLowerCase();
+
+    if (code == 'otp_expired' ||
+        message.contains('invalid or has expired') ||
+        message.contains('link is invalid') ||
+        message.contains('has expired')) {
+      return 'This verification link is invalid or expired. Request a new verification email.';
+    }
 
     // Normalize Supabase/Gotrue wording differences to one UX message.
     if (message.contains('invalid login credentials') ||

@@ -24,4 +24,9 @@ abstract class AuthRepository {
     required String fullName,
     required String emailRedirectTo,
   });
+
+  Future<void> resendSignUpVerificationEmail({
+    required String email,
+    required String emailRedirectTo,
+  });
 }

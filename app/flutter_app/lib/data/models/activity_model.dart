@@ -1,7 +1,6 @@
-
-
 class ActivityModel {
   final String userName;
+  final String? avatarUrl;
   final String timestamp;
   final String title;
   final String distance;
@@ -12,6 +11,7 @@ class ActivityModel {
 
   ActivityModel({
     required this.userName,
+    this.avatarUrl,
     required this.timestamp,
     required this.title,
     required this.distance,

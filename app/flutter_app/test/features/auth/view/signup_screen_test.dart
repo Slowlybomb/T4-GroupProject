@@ -14,6 +14,7 @@ void main() {
   }) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: ThemeData(useMaterial3: false),
         home: Scaffold(
           body: SignUpScreen(
             authRepository: authRepository,
@@ -110,6 +111,47 @@ void main() {
         find.text(
           'Account created. Check your email to verify before logging in.',
         ),
+        findsOneWidget,
+      );
+      expect(find.text('Resend verification email'), findsOneWidget);
+    });
+
+    testWidgets('resend button triggers verification email resend', (
+      tester,
+    ) async {
+      final authRepository = FakeAuthRepository(
+        onSignUp:
+            ({
+              required email,
+              required password,
+              required fullName,
+              required emailRedirectTo,
+            }) async {
+              return SignUpResult.verificationEmailSent;
+            },
+      );
+
+      await pumpSignUpScreen(
+        tester,
+        authRepository: authRepository,
+        onSignUpSuccess: () {},
+      );
+
+      await fillValidSignUpForm(tester);
+      await tester.tap(find.text('Create Account'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Resend verification email'));
+      await tester.pumpAndSettle();
+
+      expect(authRepository.resendSignUpVerificationEmailCallCount, 1);
+      expect(
+        authRepository.lastResendSignUpVerificationEmail,
+        'user@example.com',
+      );
+      expect(authRepository.lastResendSignUpRedirectTo, AuthConfig.callbackUrl);
+      expect(
+        find.text('Verification email resent. Check your inbox.'),
         findsOneWidget,
       );
     });
