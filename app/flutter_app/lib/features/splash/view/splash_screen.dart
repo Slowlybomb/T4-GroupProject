@@ -23,9 +23,9 @@ class _SplashScreenState extends State<SplashScreen> {
       backgroundColor: AppColors.primaryRed,
       body: Center(
         child: Image.asset(
-          'assets/img/logo-head.png',
-          width: 110,
-          height: 110,
+          'assets/img/logo-gondolier.png',
+          width: 200,
+          height: 200,
         ),
       ),
     );
