@@ -1,69 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../../../core/locator.dart';
-import '../../../data/models/activity_model.dart';
+import '../controller/feed_controller.dart';
+import '../domain/models/post.dart';
 import '../widgets/activity_post_card.dart';
 import '../widgets/filter_tabs.dart';
 import '../widgets/weekly_summary_card.dart';
 import '../widgets/who_to_follow_section.dart';
 
-class FeedScreen extends StatefulWidget {
-  final VoidCallback onPostTap;
-
-  const FeedScreen({super.key, required this.onPostTap});
-
-  @override
-  State<FeedScreen> createState() => _FeedScreenState();
-}
-
-class _FeedScreenState extends State<FeedScreen> {
-  late Future<List<ActivityModel>> _activitiesFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _activitiesFuture = _loadActivities();
-  }
-
-  Future<List<ActivityModel>> _loadActivities() {
-    return Locator.feedRepository.getFeedActivities();
-  }
-
-  void _reloadFeed() {
-    setState(() {
-      _activitiesFuture = _loadActivities();
-    });
-  }
+class FeedScreen extends StatelessWidget {
+  const FeedScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-      body: FutureBuilder<List<ActivityModel>>(
-        future: _activitiesFuture,
-        builder: (context, snapshot) {
+      body: Consumer<FeedController>(
+        builder: (context, controller, child) {
+          // Build the static header first; dynamic content sliver is appended below.
           final slivers = <Widget>[
             const SliverToBoxAdapter(child: _MainHeader()),
             const SliverToBoxAdapter(child: WeeklySummaryCard()),
           ];
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          // Keep previous UX semantics: spinner/error/empty only fill when no data.
+          if (controller.isLoading && controller.posts.isEmpty) {
             slivers.add(
               const SliverFillRemaining(
                 hasScrollBody: false,
                 child: Center(child: CircularProgressIndicator()),
               ),
             );
-          } else if (snapshot.hasError) {
+          } else if (controller.errorMessage != null &&
+              controller.posts.isEmpty) {
             slivers.add(
               SliverFillRemaining(
                 hasScrollBody: false,
-                child: _FeedErrorState(onRetry: _reloadFeed),
+                child: _FeedErrorState(onRetry: controller.loadPosts),
               ),
             );
           } else {
-            final activities = snapshot.data ?? const <ActivityModel>[];
-            if (activities.isEmpty) {
+            if (controller.posts.isEmpty) {
               slivers.add(
                 const SliverFillRemaining(
                   hasScrollBody: false,
@@ -71,7 +48,12 @@ class _FeedScreenState extends State<FeedScreen> {
                 ),
               );
             } else {
-              slivers.add(_buildFeedContent(activities));
+              slivers.add(
+                _buildFeedContent(
+                  posts: controller.posts,
+                  onPostTap: controller.selectPost,
+                ),
+              );
             }
           }
 
@@ -81,21 +63,25 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 
-  Widget _buildFeedContent(List<ActivityModel> activities) {
+  Widget _buildFeedContent({
+    required List<Post> posts,
+    required ValueChanged<Post> onPostTap,
+  }) {
     final children = <Widget>[];
     var insertedWhoToFollow = false;
 
-    for (var index = 0; index < activities.length; index++) {
+    for (var index = 0; index < posts.length; index++) {
+      // Preserve existing design where suggestions are injected after 2 posts.
       if (index == 2) {
         children.add(const WhoToFollowSection());
         insertedWhoToFollow = true;
       }
 
-      final activity = activities[index];
+      final post = posts[index];
       children.add(
         InkWell(
-          onTap: widget.onPostTap,
-          child: ActivityPostCard(activity: activity),
+          onTap: () => onPostTap(post),
+          child: ActivityPostCard(post: post),
         ),
       );
     }
@@ -123,7 +109,7 @@ class _MainHeader extends StatelessWidget {
               SizedBox(
                 height: 40,
                 width: 40,
-                child: Image.asset('assets/img/logo-gondolier.png'),
+                child: Image.asset('assets/img/logo-head.png'),
               ),
               Row(
                 children: const [

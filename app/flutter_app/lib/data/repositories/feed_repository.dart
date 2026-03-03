@@ -20,6 +20,12 @@ class FeedRepository {
       if (remoteActivities.isNotEmpty) {
         return remoteActivities.map((dto) => dto.toActivityModel()).toList();
       }
+
+      // Keep the feed populated for demo/early-stage environments where the
+      // backend is reachable but currently has no activities.
+      return _buildLocalFallbackFeed()
+          .map((dto) => dto.toActivityModel())
+          .toList();
     } on ApiError {
       if (!_useLocalFallback) {
         rethrow;

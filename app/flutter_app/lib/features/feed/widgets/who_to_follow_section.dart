@@ -6,6 +6,7 @@ class WhoToFollowSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Demo suggestions stay local until backend "follow suggestions" API exists.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -45,13 +46,19 @@ class _FollowerCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5),
+        ],
       ),
       child: Column(
         children: [
           const CircleAvatar(backgroundColor: Colors.grey, radius: 25),
           const SizedBox(height: 10),
-          const Text("User", style: TextStyle(fontWeight: FontWeight.bold), maxLines: 1),
+          const Text(
+            "User",
+            style: TextStyle(fontWeight: FontWeight.bold),
+            maxLines: 1,
+          ),
           const Spacer(),
           ElevatedButton(
             onPressed: () {},
@@ -61,7 +68,7 @@ class _FollowerCard extends StatelessWidget {
               minimumSize: const Size(double.infinity, 30),
             ),
             child: const Text("Follow", style: TextStyle(fontSize: 12)),
-          )
+          ),
         ],
       ),
     );

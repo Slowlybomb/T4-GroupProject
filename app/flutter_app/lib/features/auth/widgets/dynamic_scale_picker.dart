@@ -28,7 +28,9 @@ class _DynamicScalePickerState extends State<DynamicScalePicker> {
   @override
   void initState() {
     super.initState();
-    _controller = FixedExtentScrollController(initialItem: widget.initial - widget.min);
+    _controller = FixedExtentScrollController(
+      initialItem: widget.initial - widget.min,
+    );
   }
 
   @override
@@ -38,7 +40,10 @@ class _DynamicScalePickerState extends State<DynamicScalePicker> {
       body: Column(
         children: [
           const SizedBox(height: 80),
-          Text(widget.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(
+            widget.title,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
           Expanded(
             child: ListWheelScrollView.useDelegate(
               controller: _controller,
@@ -49,7 +54,10 @@ class _DynamicScalePickerState extends State<DynamicScalePicker> {
                   return Center(
                     child: Text(
                       "${widget.min + index} ${widget.unit}",
-                      style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   );
                 },

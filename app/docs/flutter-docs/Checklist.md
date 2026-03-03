@@ -7,13 +7,13 @@ Success means: same onboarding/feed/stats behavior, cleaner boundaries, centrali
 
 ## Public Interfaces / Types To Add or Change
 
-- [ ] Add `AppRoutes` constants in `lib/app/routes.dart` for `/onboarding` and `/home`.
-- [ ] Add `createAppProviders()` in `lib/app/providers.dart` returning root providers.
-- [ ] Add `FeedRepository` interface in `lib/features/feed/data/feed_repository.dart`.
-- [ ] Add `LocalFeedRepository` implementation in `lib/features/feed/data/local_feed_repository.dart`.
-- [ ] Add `FeedController` (`ChangeNotifier`) with APIs: `loadPosts()`, `selectPost(Post post)`, `clearSelectedPost()`.
-- [ ] Add `OnboardingController` (`ChangeNotifier`) with APIs: `setGender(...)`, `setAge(...)`, `setWeight(...)`, `buildProfile()`.
-- [ ] Add domain models: `Post`, `UserStats`, `OnboardingProfile`.
+- [x] Add `AppRoutes` constants in `lib/app/routes.dart` for `/onboarding` and `/home`.
+- [x] Add `createAppProviders()` in `lib/app/providers.dart` returning root providers.
+- [x] Add `FeedRepository` interface in `lib/features/feed/data/feed_repository.dart`.
+- [x] Add `LocalFeedRepository` implementation in `lib/features/feed/data/local_feed_repository.dart`.
+- [x] Add `FeedController` (`ChangeNotifier`) with APIs: `loadPosts()`, `selectPost(Post post)`, `clearSelectedPost()`.
+- [x] Add `OnboardingController` (`ChangeNotifier`) with APIs: `setGender(...)`, `setAge(...)`, `setWeight(...)`, `buildProfile()`.
+- [x] Add domain models: `Post`, `UserStats`, `OnboardingProfile`.
 
 ### Server Connection Interfaces Added (2026-03-02)
 
@@ -34,69 +34,69 @@ Success means: same onboarding/feed/stats behavior, cleaner boundaries, centrali
 
 - [ ] Create a refactor branch (`refactor/flutter-feature-structure`).
 - [ ] Capture baseline behavior video/screenshots for onboarding, feed, detail overlay, and stats tab.
-- [ ] Add/confirm a smoke test that app boots and renders initial onboarding screen.
+- [x] Add/confirm a smoke test that app boots and renders initial onboarding screen.
 - [ ] Define “no behavior regression” rule for this refactor.
 
 ## 2. Folder Skeleton and Bootstrap Split
 
-- [ ] Create `lib/app`, `lib/core`, and `lib/features` directory tree.
-- [ ] Move app root widget from `main.dart` into `lib/app/app.dart`.
+- [x] Create `lib/app`, `lib/core`, and `lib/features` directory tree.
+- [x] Move app root widget from `main.dart` into `lib/app/app.dart`.
 - [x] Keep `lib/main.dart` as bootstrap-only entrypoint.
-- [ ] Extract theme to `lib/app/theme.dart`.
-- [ ] Ensure app still runs with identical startup route.
+- [x] Extract theme to `lib/app/theme.dart`.
+- [x] Ensure app still runs with identical startup route.
 
 ## 3. App Shell and Navigation Extraction
 
-- [ ] Move `MainNavigationHub` into `lib/app/shell/main_navigation_shell.dart`.
-- [ ] Create `lib/app/routes.dart` and centralize route declarations/builders.
-- [ ] Keep Navigator flow (no `go_router` migration in this phase).
-- [ ] Ensure tab switching still resets feed detail overlay exactly as before.
+- [x] Move `MainNavigationHub` into `lib/app/shell/main_navigation_shell.dart`.
+- [x] Create `lib/app/routes.dart` and centralize route declarations/builders.
+- [x] Keep Navigator flow (no `go_router` migration in this phase).
+- [x] Ensure tab switching still resets feed detail overlay exactly as before.
 
 ## 4. Onboarding Feature Module
 
 - [ ] Move onboarding screens into `lib/features/onboarding/presentation/screens/`.
 - [ ] Move onboarding-specific widgets (`DynamicScalePicker`, `LoginClipper`) into `presentation/widgets/`.
-- [ ] Keep page-flow logic behavior unchanged during initial move.
-- [ ] Introduce `OnboardingController` and wire it via Provider.
-- [ ] Use `OnboardingProfile` domain model to collect onboarding output.
+- [x] Keep page-flow logic behavior unchanged during initial move.
+- [x] Introduce `OnboardingController` and wire it via Provider.
+- [x] Use `OnboardingProfile` domain model to collect onboarding output.
 
 ## 5. Feed Feature Module
 
 - [ ] Move feed screens into `lib/features/feed/presentation/screens/`.
 - [ ] Move feed UI components into `lib/features/feed/presentation/widgets/`.
-- [ ] Add `Post` domain model and replace hardcoded view-only state where needed.
-- [ ] Add `FeedRepository` contract and `LocalFeedRepository` mock/local implementation.
-- [ ] Add `FeedController` and migrate post selection/detail visibility logic to controller-driven state.
+- [x] Add `Post` domain model and replace hardcoded view-only state where needed.
+- [x] Add `FeedRepository` contract and `LocalFeedRepository` mock/local implementation.
+- [x] Add `FeedController` and migrate post selection/detail visibility logic to controller-driven state.
 
 ## 6. Stats Feature Module
 
 - [ ] Move stats screen and `StatItem` into `lib/features/stats/presentation/`.
-- [ ] Add `UserStats` domain model and connect current display data through typed model.
-- [ ] Add `StatsController` only if state is non-trivial; otherwise keep local state and document decision.
+- [x] Add `UserStats` domain model and connect current display data through typed model.
+- [x] Add `StatsController` only if state is non-trivial; otherwise keep local state and document decision.
 
 ## 7. Shared Core and Dependency Hygiene
 
-- [ ] Move reusable constants into `lib/core/constants/`.
-- [ ] Move truly reusable widgets into `lib/core/widgets/` (only if used in 2+ features).
-- [ ] Enforce dependency rule: `core` must not import from `features`.
-- [ ] Enforce no cross-feature UI imports.
-- [ ] Run import cleanup and remove dead code from `main.dart`.
+- [x] Move reusable constants into `lib/core/constants/`.
+- [x] Move truly reusable widgets into `lib/core/widgets/` (only if used in 2+ features).
+- [x] Enforce dependency rule: `core` must not import from `features`.
+- [x] Enforce no cross-feature UI imports.
+- [x] Run import cleanup and remove dead code from `main.dart`.
 
 ## 8. Testing and Quality Gate
 
-- [ ] Unit test `FeedController`: load/select/clear behaviors.
-- [ ] Unit test `OnboardingController`: step updates and profile build.
-- [ ] Unit test `LocalFeedRepository`: returns expected post list.
-- [ ] Widget test onboarding next/back and finish navigation.
-- [ ] Widget test feed post tap opens detail and close hides it.
-- [ ] Widget test bottom nav tab switch closes detail overlay.
-- [ ] Run `flutter analyze` and ensure no new warnings introduced by refactor.
-- [ ] Run full test suite and require green before merge.
+- [x] Unit test `FeedController`: load/select/clear behaviors.
+- [x] Unit test `OnboardingController`: step updates and profile build.
+- [x] Unit test `LocalFeedRepository`: returns expected post list.
+- [x] Widget test onboarding next/back and finish navigation.
+- [x] Widget test feed post tap opens detail and close hides it.
+- [x] Widget test bottom nav tab switch closes detail overlay.
+- [x] Run `flutter analyze` and ensure no new warnings introduced by refactor.
+- [x] Run full test suite and require green before merge.
 
 ## 9. Documentation and Team Handoff
 
-- [ ] Add `lib/README.md` describing folder conventions and dependency rules.
-- [ ] Add “How to add a new feature” section with required files and naming.
+- [x] Add `lib/README.md` describing folder conventions and dependency rules.
+- [x] Add “How to add a new feature” section with required files and naming.
 - [ ] Update project docs with new architecture diagram and state flow notes.
 - [ ] Add PR checklist item: “Any new code follows feature-first structure”.
 
@@ -111,22 +111,30 @@ Success means: same onboarding/feed/stats behavior, cleaner boundaries, centrali
 - [x] Add backend-connection tests for interceptor behavior, DTO parsing, and repository error mapping.
 - [x] Run Flutter tests for this slice and keep them green.
 
+## 11. Auth + Feed Stability Slice (2026-03-03)
+
+- [x] Implement onboarding `Skip` demo sign-in flow (`test_user_gondalier@gmail.com`).
+- [x] Add account details update support (name/email/password) via auth repository.
+- [x] Replace profile placeholder with editable account details form and validation.
+- [x] Ensure feed shows fallback rows when backend list is empty (avoid blank feed state).
+- [x] Add regression tests for feed fallback behavior and account details save flow.
+
 ## Acceptance Criteria
 
 - [x] `lib/main.dart` contains only bootstrap/setup.
-- [ ] No onboarding/feed/stats UI classes remain in `main.dart`.
-- [ ] Existing behavior is unchanged for onboarding, feed detail overlay, and stats navigation.
-- [ ] Route and provider setup are centralized under `lib/app/`.
-- [ ] New feature scaffolding can be added without touching unrelated feature folders.
+- [x] No onboarding/feed/stats UI classes remain in `main.dart`.
+- [x] Existing behavior is unchanged for onboarding, feed detail overlay, and stats navigation.
+- [x] Route and provider setup are centralized under `lib/app/`.
+- [x] New feature scaffolding can be added without touching unrelated feature folders.
 
 ## Test Scenarios (Explicit)
 
-- [ ] Fresh launch opens onboarding first screen.
+- [x] Fresh launch opens onboarding first screen.
 - [ ] Onboarding next/back works and finish enters home shell.
-- [ ] Feed list renders and post tap opens detail overlay.
-- [ ] Closing detail returns to feed state.
-- [ ] Switching tab from feed to stats closes any open detail.
-- [ ] Returning to feed preserves expected feed UI state.
+- [x] Feed list renders and post tap opens detail overlay.
+- [x] Closing detail returns to feed state.
+- [x] Switching tab from feed to stats closes any open detail.
+- [x] Returning to feed preserves expected feed UI state.
 
 ## Assumptions and Defaults
 

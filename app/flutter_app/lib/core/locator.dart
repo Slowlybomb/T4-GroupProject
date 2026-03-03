@@ -64,6 +64,10 @@ class AppDependencies {
 class Locator {
   static AppDependencies? _dependencies;
 
+  static bool get isInitialized => _dependencies != null;
+
+  static AppDependencies? get maybeDependencies => _dependencies;
+
   static Future<void> initialize(RuntimeConfig runtimeConfig) async {
     // Idempotent app bootstrap.
     _dependencies ??= AppDependencies.create(runtimeConfig);

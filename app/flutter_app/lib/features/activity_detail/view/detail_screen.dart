@@ -1,12 +1,19 @@
-// TODO: Implement detail_screen.dart
 import 'package:flutter/material.dart';
-import '../../feed/widgets/post_user_header.dart';
-import '../../feed/widgets/post_stats_row.dart';
+
+import '../../../core/widgets/post_stats_row.dart';
+import '../../../core/widgets/post_user_header.dart';
+import '../../feed/domain/models/post.dart';
 import '../widgets/orange_line_painter.dart';
 
 class PostDetailScreen extends StatelessWidget {
+  final Post post;
   final VoidCallback onClose;
-  const PostDetailScreen({super.key, required this.onClose});
+
+  const PostDetailScreen({
+    super.key,
+    required this.post,
+    required this.onClose,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -14,10 +21,7 @@ class PostDetailScreen extends StatelessWidget {
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          // 1. HEADER WITH GRAPH
           _buildGraphHeader(),
-
-          // 2. DATA SHEET
           Expanded(
             child: Container(
               width: double.infinity,
@@ -34,22 +38,28 @@ class PostDetailScreen extends StatelessWidget {
                   children: [
                     const _DragHandle(),
                     const SizedBox(height: 20),
-                    
-                    // REUSING THE HEADER WE JUST MADE!
-                    const PostUserHeader(name: "Hugo", timeAgo: "22 Jan 2026 - Cork"),
-                    
+                    PostUserHeader(
+                      name: post.userName,
+                      timeAgo: post.timestamp,
+                      avatarUrl: post.avatarUrl,
+                    ),
                     const SizedBox(height: 20),
-                    const Text(
-                      "Shit myself while rowing",
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    Text(
+                      post.title,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 25),
-
-                    // REUSING THE STATS ROW WE JUST FIXED!
-                    const PostStatsRow(),
-
+                    PostStatsRow(
+                      distance: post.distance,
+                      duration: post.duration,
+                      avgSplit: post.avgSplit,
+                      strokeRate: post.strokeRate,
+                    ),
                     const SizedBox(height: 40),
-                    const _ActionIcons(),
+                    _ActionIcons(likes: post.likes),
                     const SizedBox(height: 40),
                     const _BackgroundWatermark(),
                   ],
@@ -90,13 +100,9 @@ class PostDetailScreen extends StatelessWidget {
   }
 }
 
-// ... Add the small private helpers (_DragHandle, _ActionIcons, _BackgroundWatermark) below
-// ==========================================
-// NEW HELPERS ADDED BELOW
-// ==========================================
-
 class _DragHandle extends StatelessWidget {
   const _DragHandle();
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -113,15 +119,18 @@ class _DragHandle extends StatelessWidget {
 }
 
 class _ActionIcons extends StatelessWidget {
-  const _ActionIcons();
+  final int likes;
+
+  const _ActionIcons({required this.likes});
+
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _actionButton(Icons.favorite_border, "Like"),
-        _actionButton(Icons.chat_bubble_outline, "Comment"),
-        _actionButton(Icons.share_outlined, "Share"),
+        _actionButton(Icons.favorite_border, 'Like ($likes)'),
+        _actionButton(Icons.chat_bubble_outline, 'Comment'),
+        _actionButton(Icons.share_outlined, 'Share'),
       ],
     );
   }
@@ -139,15 +148,16 @@ class _ActionIcons extends StatelessWidget {
 
 class _BackgroundWatermark extends StatelessWidget {
   const _BackgroundWatermark();
+
   @override
   Widget build(BuildContext context) {
     return const Center(
       child: Text(
-        "GONDOLIER",
+        'GONDOLIER',
         style: TextStyle(
           fontSize: 60,
           fontWeight: FontWeight.bold,
-          color: Color(0x05000000), // Very subtle black
+          color: Color(0x05000000),
         ),
       ),
     );

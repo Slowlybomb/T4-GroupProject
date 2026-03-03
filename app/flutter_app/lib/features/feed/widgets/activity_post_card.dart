@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 
-import '../../../data/models/activity_model.dart';
-import 'post_user_header.dart' as post_header;
-import 'post_stats_row.dart' as post_stats;
+import '../../../core/widgets/post_stats_row.dart' as post_stats;
+import '../../../core/widgets/post_user_header.dart' as post_header;
+import '../domain/models/post.dart';
 
 class ActivityPostCard extends StatelessWidget {
-  final ActivityModel activity;
+  final Post post;
 
-  const ActivityPostCard({super.key, required this.activity});
+  const ActivityPostCard({super.key, required this.post});
 
   @override
   Widget build(BuildContext context) {
+    // Post card consumes feature-domain `Post`, decoupled from API DTOs.
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       padding: const EdgeInsets.all(16),
@@ -19,7 +20,7 @@ class ActivityPostCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -29,25 +30,25 @@ class ActivityPostCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           post_header.PostUserHeader(
-            name: activity.userName,
-            timeAgo: activity.timestamp,
-            avatarUrl: activity.avatarUrl,
+            name: post.userName,
+            timeAgo: post.timestamp,
+            avatarUrl: post.avatarUrl,
           ),
           Padding(
-            padding: EdgeInsets.symmetric(vertical: 12.0),
+            padding: const EdgeInsets.symmetric(vertical: 12.0),
             child: Text(
-              activity.title,
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              post.title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ),
           post_stats.PostStatsRow(
-            distance: activity.distance,
-            duration: activity.duration,
-            avgSplit: activity.avgSplit,
-            strokeRate: activity.strokeRate,
+            distance: post.distance,
+            duration: post.duration,
+            avgSplit: post.avgSplit,
+            strokeRate: post.strokeRate,
           ),
           const SizedBox(height: 15),
-          // Map Placeholder
+          // TODO: replace with actual route map when map rendering is available.
           Container(
             height: 150,
             width: double.infinity,
@@ -58,7 +59,7 @@ class ActivityPostCard extends StatelessWidget {
             child: const Icon(Icons.map_outlined, color: Colors.blue, size: 40),
           ),
           const SizedBox(height: 15),
-          _PostActions(likes: activity.likes),
+          _PostActions(likes: post.likes),
         ],
       ),
     );

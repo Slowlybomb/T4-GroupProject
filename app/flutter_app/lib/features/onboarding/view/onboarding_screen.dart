@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 import '../../../data/repositories/auth_repository.dart';
 import '../../../core/theme/app_colour_theme.dart';
 import '../../../core/widgets/primarybutton.dart';
+import '../controller/onboarding_controller.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback onGetStarted;
@@ -21,6 +23,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   bool _isSkipping = false;
   String? _skipErrorMessage;
 
+  OnboardingController? _tryReadOnboardingController() {
+    try {
+      return context.read<OnboardingController>();
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
+  void _handleGetStarted() {
+    _tryReadOnboardingController()?.buildProfile();
+    widget.onGetStarted();
+  }
+
   Future<void> _handleSkip() async {
     if (_isSkipping) {
       return;
@@ -28,7 +43,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     final skipAction = widget.onSkip;
     if (skipAction == null) {
-      widget.onGetStarted();
+      _handleGetStarted();
       return;
     }
 
@@ -120,7 +135,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 if (_isLastPage)
                   PrimaryButton(
                     text: "Get Started",
-                    onPressed: widget.onGetStarted,
+                    onPressed: _handleGetStarted,
                   )
                 else
                   const SizedBox(

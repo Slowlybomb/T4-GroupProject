@@ -6,6 +6,7 @@ class WeeklySummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Static summary block used while richer stats integration is in progress.
     return Container(
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(24),
@@ -16,12 +17,24 @@ class WeeklySummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Weekly Summary', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic)),
+          const Text(
+            'Weekly Summary',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
           const SizedBox(height: 20),
           Row(
             children: const [
-              Expanded(child: _SummaryStat(label: 'Distance', value: '48.9 km')),
-              Expanded(child: _SummaryStat(label: 'Activities', value: '4')),
+              Expanded(
+                child: _SummaryStat(label: 'Distance', value: '48.9 km'),
+              ),
+              Expanded(
+                child: _SummaryStat(label: 'Activities', value: '4'),
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -29,10 +42,17 @@ class WeeklySummaryCard extends StatelessWidget {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {},
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.red, shape: const StadiumBorder()),
-              child: const Text('View progress', style: TextStyle(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.red,
+                shape: const StadiumBorder(),
+              ),
+              child: const Text(
+                'View progress',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -49,7 +69,14 @@ class _SummaryStat extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(color: Colors.white70)),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ],
     );
   }

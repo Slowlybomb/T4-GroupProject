@@ -4,11 +4,29 @@ import '../../../core/locator.dart';
 import '../../../core/theme/app_colour_theme.dart';
 import '../../../core/widgets/primarybutton.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../stats/domain/models/user_stats.dart';
 
 class UserStatsScreen extends StatefulWidget {
   final AuthRepository? authRepository;
+  final UserStats userStats;
 
-  const UserStatsScreen({super.key, this.authRepository});
+  const UserStatsScreen({
+    super.key,
+    this.authRepository,
+    this.userStats = _defaultUserStats,
+  });
+
+  static const UserStats _defaultUserStats = UserStats(
+    weeklyDistanceKm: 0,
+    weeklyMinutes: 0,
+    trainingLogDateRange: 'Feb 2 - Feb 8, 2026',
+    trainingLogEntries: [
+      TrainingLogEntry(label: 'M'),
+      TrainingLogEntry(label: 'T'),
+      TrainingLogEntry(label: '1h', highlighted: true),
+      TrainingLogEntry(label: 'T'),
+    ],
+  );
 
   @override
   State<UserStatsScreen> createState() => _UserStatsScreenState();
@@ -176,7 +194,7 @@ class _UserStatsScreenState extends State<UserStatsScreen> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.StrongtextBlack,
+                color: AppColors.strongTextBlack,
               ),
             ),
             const SizedBox(height: 16),
@@ -279,12 +297,12 @@ class _UserStatsScreenState extends State<UserStatsScreen> {
         child: Column(
           children: [
             _buildAccountDetailsSection(),
-            const _ThisWeekSummary(),
+            _ThisWeekSummary(stats: widget.userStats),
             const Text(
               "More graphs",
               style: TextStyle(fontSize: 40, fontWeight: FontWeight.w300),
             ),
-            const _TrainingLogCard(),
+            _TrainingLogCard(stats: widget.userStats),
           ],
         ),
       ),
@@ -294,28 +312,34 @@ class _UserStatsScreenState extends State<UserStatsScreen> {
 
 // Internal helpers for the Profile Screen
 class _ThisWeekSummary extends StatelessWidget {
-  const _ThisWeekSummary();
+  final UserStats stats;
+
+  const _ThisWeekSummary({required this.stats});
+
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.all(20.0),
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             "This Week",
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
           ),
           Row(
             children: [
               Text(
-                "Distance: 0 km  ",
-                style: TextStyle(color: AppColors.textGrey),
+                "Distance: ${stats.weeklyDistanceKm.toStringAsFixed(0)} km  ",
+                style: const TextStyle(color: AppColors.textGrey),
               ),
-              Text("Time: 0 m", style: TextStyle(color: AppColors.textGrey)),
+              Text(
+                "Time: ${stats.weeklyMinutes} m",
+                style: const TextStyle(color: AppColors.textGrey),
+              ),
             ],
           ),
-          SizedBox(
+          const SizedBox(
             height: 100,
             child: Center(child: Text("--- Graph Placeholder ---")),
           ),
@@ -326,7 +350,10 @@ class _ThisWeekSummary extends StatelessWidget {
 }
 
 class _TrainingLogCard extends StatelessWidget {
-  const _TrainingLogCard();
+  final UserStats stats;
+
+  const _TrainingLogCard({required this.stats});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -336,60 +363,58 @@ class _TrainingLogCard extends StatelessWidget {
         color: AppColors.primaryRed,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             "Training Log",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           Text(
-            "Feb 2 - Feb 8, 2026",
-            style: TextStyle(color: Colors.white70, fontSize: 12),
+            stats.trainingLogDateRange,
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              CircleAvatar(
-                radius: 15,
-                backgroundColor: Colors.white24,
-                child: Text(
-                  "M",
-                  style: TextStyle(color: Colors.white, fontSize: 10),
-                ),
-              ),
-              CircleAvatar(
-                radius: 15,
-                backgroundColor: Colors.white24,
-                child: Text(
-                  "T",
-                  style: TextStyle(color: Colors.white, fontSize: 10),
-                ),
-              ),
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.white,
-                child: Text(
-                  "1h",
-                  style: TextStyle(
-                    color: AppColors.primaryRed,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              CircleAvatar(
-                radius: 15,
-                backgroundColor: Colors.white24,
-                child: Text(
-                  "T",
-                  style: TextStyle(color: Colors.white, fontSize: 10),
-                ),
-              ),
-            ],
+            children: stats.trainingLogEntries
+                .map((entry) => _TrainingLogEntryAvatar(entry: entry))
+                .toList(growable: false),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TrainingLogEntryAvatar extends StatelessWidget {
+  final TrainingLogEntry entry;
+
+  const _TrainingLogEntryAvatar({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    if (entry.highlighted) {
+      return CircleAvatar(
+        radius: 20,
+        backgroundColor: Colors.white,
+        child: Text(
+          entry.label,
+          style: const TextStyle(
+            color: AppColors.primaryRed,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+
+    return CircleAvatar(
+      radius: 15,
+      backgroundColor: Colors.white24,
+      child: Text(
+        entry.label,
+        style: const TextStyle(color: Colors.white, fontSize: 10),
       ),
     );
   }
