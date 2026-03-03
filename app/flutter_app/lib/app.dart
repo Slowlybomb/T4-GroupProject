@@ -13,11 +13,13 @@ import 'features/dashboard/view/dashboard_screen.dart';
 class RowingApp extends StatefulWidget {
   final AuthRepository? authRepository;
   final bool initialOnboardingFinished;
+  final Widget? loggedInHome;
 
   const RowingApp({
     super.key,
     this.authRepository,
     this.initialOnboardingFinished = false,
+    this.loggedInHome,
   });
 
   @override
@@ -25,6 +27,9 @@ class RowingApp extends StatefulWidget {
 }
 
 class _RowingAppState extends State<RowingApp> {
+  static const _demoAccountEmail = 'test_user_gondalier@gmail.com';
+  static const _demoAccountPassword = '12345678';
+
   late final AuthRepository _authRepository;
   bool _isOnboardingFinished = false;
   bool _isLoggedIn = false;
@@ -54,6 +59,24 @@ class _RowingAppState extends State<RowingApp> {
     super.dispose();
   }
 
+  void _completeOnboarding() {
+    setState(() => _isOnboardingFinished = true);
+  }
+
+  Future<void> _loginWithDemoAccount() async {
+    await _authRepository.signIn(
+      email: _demoAccountEmail,
+      password: _demoAccountPassword,
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _isOnboardingFinished = true;
+      _isLoggedIn = true;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -64,7 +87,7 @@ class _RowingAppState extends State<RowingApp> {
       ),
       home: _isOnboardingFinished
           ? (_isLoggedIn
-                ? const MainNavigationHub()
+                ? (widget.loggedInHome ?? const MainNavigationHub())
                 : AuthScreen(
                     authRepository: _authRepository,
                     onLoginSuccess: () {
@@ -75,9 +98,8 @@ class _RowingAppState extends State<RowingApp> {
                     },
                   ))
           : OnboardingScreen(
-              onFinish: () {
-                setState(() => _isOnboardingFinished = true);
-              },
+              onGetStarted: _completeOnboarding,
+              onSkip: _loginWithDemoAccount,
             ),
     );
   }

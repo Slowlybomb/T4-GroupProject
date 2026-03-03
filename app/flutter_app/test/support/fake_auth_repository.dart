@@ -17,30 +17,43 @@ typedef ResendSignUpVerificationEmailHandler =
       required String email,
       required String emailRedirectTo,
     });
+typedef UpdateAccountDetailsHandler =
+    Future<void> Function({
+      required String fullName,
+      required String email,
+      String? password,
+    });
 
 class FakeAuthRepository implements AuthRepository {
   FakeAuthRepository({
     bool isLoggedIn = false,
+    AccountDetails? currentAccountDetails,
     StreamController<AuthState>? authStateController,
     SignInHandler? onSignIn,
     SignUpHandler? onSignUp,
     ResendSignUpVerificationEmailHandler? onResendSignUpVerificationEmail,
+    UpdateAccountDetailsHandler? onUpdateAccountDetails,
   }) : _isLoggedIn = isLoggedIn,
+       _currentAccountDetails = currentAccountDetails,
        _authStateController =
            authStateController ?? StreamController<AuthState>.broadcast(),
        _onSignIn = onSignIn,
        _onSignUp = onSignUp,
-       _onResendSignUpVerificationEmail = onResendSignUpVerificationEmail;
+       _onResendSignUpVerificationEmail = onResendSignUpVerificationEmail,
+       _onUpdateAccountDetails = onUpdateAccountDetails;
 
   bool _isLoggedIn;
+  AccountDetails? _currentAccountDetails;
   final StreamController<AuthState> _authStateController;
   final SignInHandler? _onSignIn;
   final SignUpHandler? _onSignUp;
   final ResendSignUpVerificationEmailHandler? _onResendSignUpVerificationEmail;
+  final UpdateAccountDetailsHandler? _onUpdateAccountDetails;
 
   int signInCallCount = 0;
   int signUpCallCount = 0;
   int resendSignUpVerificationEmailCallCount = 0;
+  int updateAccountDetailsCallCount = 0;
 
   String? lastSignInEmail;
   String? lastSignInPassword;
@@ -51,12 +64,22 @@ class FakeAuthRepository implements AuthRepository {
   String? lastSignUpRedirectTo;
   String? lastResendSignUpVerificationEmail;
   String? lastResendSignUpRedirectTo;
+  String? lastUpdateAccountFullName;
+  String? lastUpdateAccountEmail;
+  String? lastUpdateAccountPassword;
 
   @override
   bool get isLoggedIn => _isLoggedIn;
 
   set isLoggedIn(bool value) {
     _isLoggedIn = value;
+  }
+
+  @override
+  AccountDetails? get currentAccountDetails => _currentAccountDetails;
+
+  set currentAccountDetails(AccountDetails? value) {
+    _currentAccountDetails = value;
   }
 
   @override
@@ -116,6 +139,29 @@ class FakeAuthRepository implements AuthRepository {
     }
   }
 
+  @override
+  Future<void> updateAccountDetails({
+    required String fullName,
+    required String email,
+    String? password,
+  }) async {
+    updateAccountDetailsCallCount += 1;
+    lastUpdateAccountFullName = fullName;
+    lastUpdateAccountEmail = email;
+    lastUpdateAccountPassword = password;
+
+    if (_onUpdateAccountDetails != null) {
+      await _onUpdateAccountDetails(
+        fullName: fullName,
+        email: email,
+        password: password,
+      );
+      return;
+    }
+
+    _currentAccountDetails = AccountDetails(email: email, fullName: fullName);
+  }
+
   Future<void> emit(AuthState state) async {
     _authStateController.add(state);
     await Future<void>.value();
@@ -128,6 +174,8 @@ class FakeAuthRepository implements AuthRepository {
 
 Session buildTestSession({
   String userId = '11111111-1111-1111-1111-111111111111',
+  String email = 'user@example.com',
+  Map<String, dynamic>? userMetadata,
   String accessToken = 'header.payload.signature',
 }) {
   return Session.fromJson({
@@ -135,7 +183,9 @@ Session buildTestSession({
     'token_type': 'bearer',
     'user': {
       'id': userId,
+      'email': email,
       'app_metadata': <String, dynamic>{},
+      'user_metadata': userMetadata ?? <String, dynamic>{},
       'aud': 'authenticated',
       'created_at': '2026-01-01T00:00:00Z',
     },

@@ -38,56 +38,69 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(30.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      _authTab(
-                        "Login",
-                        isLogin,
-                        () => setState(() => isLogin = true),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.all(30.0),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: IntrinsicHeight(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              _authTab(
+                                "Login",
+                                isLogin,
+                                () => setState(() => isLogin = true),
+                              ),
+                              const SizedBox(width: 20),
+                              _authTab(
+                                "Sign up",
+                                !isLogin,
+                                () => setState(() => isLogin = false),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 40),
+                          Text(
+                            isLogin
+                                ? "Welcome Back.\nLOGIN TO YOUR ACCOUNT"
+                                : "Create Account.\nJOIN US",
+                            style: const TextStyle(
+                              fontSize: 32,
+                              color: AppColors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Spacer(),
+                          // Swap auth forms without losing the surrounding screen style.
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 220),
+                            child: isLogin
+                                ? LoginScreen(
+                                    key: const ValueKey('login-form'),
+                                    onLoginSuccess: widget.onLoginSuccess,
+                                    authRepository: widget.authRepository,
+                                  )
+                                : SignUpScreen(
+                                    key: const ValueKey('signup-form'),
+                                    onSignUpSuccess: widget.onSignUpSuccess,
+                                    authRepository: widget.authRepository,
+                                  ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
                       ),
-                      const SizedBox(width: 20),
-                      _authTab(
-                        "Sign up",
-                        !isLogin,
-                        () => setState(() => isLogin = false),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 40),
-                  Text(
-                    isLogin
-                        ? "Welcome Back.\nHUGO"
-                        : "Create Account.\nJOIN US",
-                    style: const TextStyle(
-                      fontSize: 32,
-                      color: AppColors.white,
-                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const Spacer(),
-                  // Swap auth forms without losing the surrounding screen style.
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 220),
-                    child: isLogin
-                        ? LoginScreen(
-                            key: const ValueKey('login-form'),
-                            onLoginSuccess: widget.onLoginSuccess,
-                            authRepository: widget.authRepository,
-                          )
-                        : SignUpScreen(
-                            key: const ValueKey('signup-form'),
-                            onSignUpSuccess: widget.onSignUpSuccess,
-                            authRepository: widget.authRepository,
-                          ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],

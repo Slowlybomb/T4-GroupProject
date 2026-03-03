@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+
+import '../../../data/repositories/auth_repository.dart';
 import '../../../core/theme/app_colour_theme.dart';
 import '../../../core/widgets/primarybutton.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  final VoidCallback onFinish;
-  const OnboardingScreen({super.key, required this.onFinish});
+  final VoidCallback onGetStarted;
+  final Future<void> Function()? onSkip;
+
+  const OnboardingScreen({super.key, required this.onGetStarted, this.onSkip});
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -14,6 +18,45 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final _controller = PageController();
   bool _isLastPage = false;
+  bool _isSkipping = false;
+  String? _skipErrorMessage;
+
+  Future<void> _handleSkip() async {
+    if (_isSkipping) {
+      return;
+    }
+
+    final skipAction = widget.onSkip;
+    if (skipAction == null) {
+      widget.onGetStarted();
+      return;
+    }
+
+    setState(() {
+      _isSkipping = true;
+      _skipErrorMessage = null;
+    });
+
+    try {
+      await skipAction();
+    } on AuthFailure catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _skipErrorMessage = error.message);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(
+        () => _skipErrorMessage = 'Demo sign in failed. Please try again.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSkipping = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,8 +93,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             top: 50,
             right: 20,
             child: TextButton(
-              onPressed: widget.onFinish,
-              child: const Text("Skip", style: TextStyle(color: Colors.grey)),
+              onPressed: _isSkipping ? null : _handleSkip,
+              child: Text(
+                _isSkipping ? 'Skipping...' : 'Skip',
+                style: const TextStyle(color: Colors.grey),
+              ),
             ),
           ),
 
@@ -72,9 +118,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 const SizedBox(height: 30),
                 if (_isLastPage)
-                  PrimaryButton(text: "Get Started", onPressed: widget.onFinish)
+                  PrimaryButton(
+                    text: "Get Started",
+                    onPressed: widget.onGetStarted,
+                  )
                 else
-                  const SizedBox(height: 50), // Placeholder to keep layout steady
+                  const SizedBox(
+                    height: 50,
+                  ), // Placeholder to keep layout steady
+                if (_skipErrorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      _skipErrorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppColors.primaryRed,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

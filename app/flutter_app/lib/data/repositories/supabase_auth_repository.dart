@@ -16,14 +16,23 @@ typedef ResendSignUpVerificationEmail =
       required String email,
       required String emailRedirectTo,
     });
+typedef UpdateAccountDetails =
+    Future<void> Function({
+      required String fullName,
+      required String email,
+      String? password,
+    });
 typedef CurrentSessionReader = Session? Function();
+typedef CurrentUserReader = User? Function();
 typedef AuthStateStreamReader = Stream<AuthState> Function();
 
 class SupabaseAuthRepository implements AuthRepository {
   final SignInWithPassword _signInWithPassword;
   final SignUpWithPassword _signUpWithPassword;
   final ResendSignUpVerificationEmail _resendSignUpVerificationEmail;
+  final UpdateAccountDetails _updateAccountDetails;
   final CurrentSessionReader _currentSessionReader;
+  final CurrentUserReader _currentUserReader;
   final AuthStateStreamReader _authStateStreamReader;
 
   SupabaseAuthRepository(SupabaseClient supabaseClient)
@@ -51,7 +60,22 @@ class SupabaseAuthRepository implements AuthRepository {
               emailRedirectTo: emailRedirectTo,
             );
           }),
+      _updateAccountDetails =
+          (({
+            required String fullName,
+            required String email,
+            String? password,
+          }) async {
+            await supabaseClient.auth.updateUser(
+              UserAttributes(
+                email: email,
+                password: password,
+                data: {'full_name': fullName},
+              ),
+            );
+          }),
       _currentSessionReader = (() => supabaseClient.auth.currentSession),
+      _currentUserReader = (() => supabaseClient.auth.currentUser),
       _authStateStreamReader = (() => supabaseClient.auth.onAuthStateChange);
 
   // Dedicated test constructor to inject fake auth behaviors without mocking
@@ -60,16 +84,35 @@ class SupabaseAuthRepository implements AuthRepository {
     required SignInWithPassword signInWithPassword,
     required SignUpWithPassword signUpWithPassword,
     required ResendSignUpVerificationEmail resendSignUpVerificationEmail,
+    required UpdateAccountDetails updateAccountDetails,
     required CurrentSessionReader currentSessionReader,
+    required CurrentUserReader currentUserReader,
     required AuthStateStreamReader authStateStreamReader,
   }) : _signInWithPassword = signInWithPassword,
        _signUpWithPassword = signUpWithPassword,
        _resendSignUpVerificationEmail = resendSignUpVerificationEmail,
+       _updateAccountDetails = updateAccountDetails,
        _currentSessionReader = currentSessionReader,
+       _currentUserReader = currentUserReader,
        _authStateStreamReader = authStateStreamReader;
 
   @override
   bool get isLoggedIn => _currentSessionReader() != null;
+
+  @override
+  AccountDetails? get currentAccountDetails {
+    final user = _currentUserReader();
+    if (user == null) {
+      return null;
+    }
+
+    final rawFullName = user.userMetadata?['full_name']?.toString().trim();
+    final fullName = (rawFullName == null || rawFullName.isEmpty)
+        ? null
+        : rawFullName;
+
+    return AccountDetails(email: user.email?.trim() ?? '', fullName: fullName);
+  }
 
   @override
   Stream<AuthState> authStateChanges() => _authStateStreamReader();
@@ -129,6 +172,41 @@ class SupabaseAuthRepository implements AuthRepository {
     }
   }
 
+  @override
+  Future<void> updateAccountDetails({
+    required String fullName,
+    required String email,
+    String? password,
+  }) async {
+    final trimmedFullName = fullName.trim();
+    final trimmedEmail = email.trim();
+    final trimmedPassword = password?.trim();
+
+    if (trimmedFullName.isEmpty) {
+      throw const AuthFailure('Name is required.');
+    }
+
+    if (trimmedEmail.isEmpty) {
+      throw const AuthFailure('Email is required.');
+    }
+
+    try {
+      await _updateAccountDetails(
+        fullName: trimmedFullName,
+        email: trimmedEmail,
+        password: (trimmedPassword == null || trimmedPassword.isEmpty)
+            ? null
+            : trimmedPassword,
+      );
+    } on AuthException catch (error) {
+      throw AuthFailure(_mapAccountUpdateErrorMessage(error));
+    } catch (_) {
+      throw const AuthFailure(
+        'Unable to update account details. Please try again.',
+      );
+    }
+  }
+
   String _mapAuthErrorMessage(AuthException error) {
     final rawMessage = error.message;
     final message = rawMessage.toLowerCase();
@@ -164,5 +242,30 @@ class SupabaseAuthRepository implements AuthRepository {
     }
 
     return rawMessage;
+  }
+
+  String _mapAccountUpdateErrorMessage(AuthException error) {
+    final message = error.message.toLowerCase();
+
+    if (message.contains('weak password') ||
+        message.contains('at least 6 characters')) {
+      return 'Password must be at least 6 characters.';
+    }
+
+    if (message.contains('same password') ||
+        message.contains('must be different')) {
+      return 'New password must be different from your current password.';
+    }
+
+    if (message.contains('invalid email')) {
+      return 'Enter a valid email address.';
+    }
+
+    if (message.contains('already in use') ||
+        message.contains('already been')) {
+      return 'This email is already in use.';
+    }
+
+    return _mapAuthErrorMessage(error);
   }
 }
