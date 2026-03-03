@@ -19,13 +19,16 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final logoSize = MediaQuery.of(context).size.width * 0.8;
+
     return Scaffold(
       backgroundColor: AppColors.primaryRed,
       body: Center(
         child: Image.asset(
           'assets/img/logo-gondolier.png',
-          width: 200,
-          height: 200,
+          width: logoSize,
+          height: logoSize,
+          fit: BoxFit.contain,
         ),
       ),
     );

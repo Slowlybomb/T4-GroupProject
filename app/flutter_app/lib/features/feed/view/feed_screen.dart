@@ -107,9 +107,9 @@ class _MainHeader extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               SizedBox(
-                height: 40,
-                width: 40,
-                child: Image.asset('assets/img/logo-head.png'),
+                height: 60,
+                width: 60,
+                child: Image.asset('assets/img/logo-gondolier.png'),
               ),
               Row(
                 children: const [
