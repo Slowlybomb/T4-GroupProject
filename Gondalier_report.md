@@ -1,6 +1,17 @@
 # Gondolier
+An Open Source Rowing Monitor
+#### Group 4
 
-## An open source rowing monitor
+![test](images/gondolierLogo.png)
+
+#### Group Members
+- Hugo Guenebaut
+- Emin Aksoyg
+- Nixie
+- Hleb Slyusar
+- David Fresno
+- Mark Cannavan
+
 
 ### Preface
 
@@ -154,7 +165,7 @@ Unit testing on-device is limited, but key techniques used:
 - Hugo Guenebaut \- Embedded systems lead  
 - Emin Aksoy \- Machine learning engineer
 - Nixie \- Embedded UI designer  
-- Mark \- Communications and radio engineer  
+- Mark Cannavan \- Communications and radio engineer  
 - Hleb Slyusar \- API Backend, DevOps and Frontend
 - David Fresno \- App Frontend
 
