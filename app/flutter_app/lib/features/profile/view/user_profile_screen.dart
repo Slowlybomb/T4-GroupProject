@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colour_theme.dart';
+import '../../feed/domain/models/post.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final String name;
@@ -13,11 +14,10 @@ class UserProfileScreen extends StatefulWidget {
 class _UserProfileScreenState extends State<UserProfileScreen> {
   bool _following = false;
 
-  // Hardcoded demo activities for any user profile
   static const _recentActivities = [
-    _ActivityEntry(title: 'Morning row on the Liffey', distance: '8.4 km', date: '2 days ago'),
-    _ActivityEntry(title: 'Evening session', distance: '5.2 km', date: '5 days ago'),
-    _ActivityEntry(title: 'Long distance training', distance: '14.1 km', date: '1 week ago'),
+    Post(userName: '', timestamp: '2 days ago', title: 'Morning row on the Liffey', distance: '8.4 km', duration: '42:15', avgSplit: '2:31', strokeRate: '22 spm'),
+    Post(userName: '', timestamp: '5 days ago', title: 'Evening session', distance: '5.2 km', duration: '27:40', avgSplit: '2:39', strokeRate: '20 spm'),
+    Post(userName: '', timestamp: '1 week ago', title: 'Long distance training', distance: '14.1 km', duration: '1:12:08', avgSplit: '2:33', strokeRate: '21 spm'),
   ];
 
   @override
@@ -150,15 +150,8 @@ class _VerticalDivider extends StatelessWidget {
   }
 }
 
-class _ActivityEntry {
-  final String title;
-  final String distance;
-  final String date;
-  const _ActivityEntry({required this.title, required this.distance, required this.date});
-}
-
 class _ActivityCard extends StatelessWidget {
-  final _ActivityEntry entry;
+  final Post entry;
   const _ActivityCard({required this.entry});
 
   @override
@@ -199,7 +192,7 @@ class _ActivityCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${entry.distance} · ${entry.date}',
+                  '${entry.distance} · ${entry.timestamp}',
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],

@@ -43,19 +43,13 @@ class WhoToFollowSection extends StatelessWidget {
           ),
         const SizedBox(height: 15),
         SizedBox(
-          height: 160,
+          height: 175,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.only(left: 20),
-            itemCount: suggestions.length,
-            itemBuilder: (context, index) {
-              final suggestion = suggestions[index];
-              return _FollowerCard(
-                suggestion: suggestion,
-                isFollowing: isFollowing(suggestion.id),
-                onFollowTap: () => onFollowTap(suggestion),
-              );
-            },
+            itemCount: 5,
+            itemBuilder: (context, index) =>
+                _FollowerCard(name: 'Rower ${index + 1}'),
           ),
         ),
         const SizedBox(height: 10),
@@ -64,70 +58,64 @@ class WhoToFollowSection extends StatelessWidget {
   }
 }
 
-class _FollowerCard extends StatelessWidget {
-  const _FollowerCard({
-    required this.suggestion,
-    required this.onFollowTap,
-    required this.isFollowing,
-  });
+class _FollowerCard extends StatefulWidget {
+  final String name;
+  const _FollowerCard({required this.name});
 
-  final FollowSuggestion suggestion;
-  final VoidCallback onFollowTap;
-  final bool isFollowing;
+  @override
+  State<_FollowerCard> createState() => _FollowerCardState();
+}
+
+class _FollowerCardState extends State<_FollowerCard> {
+  bool _following = false;
+
+  void _openProfile(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => UserProfileScreen(name: widget.name)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 130,
-      margin: const EdgeInsets.only(right: 15),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5),
-        ],
-      ),
-      child: Column(
-        children: [
-          CircleAvatar(
-            backgroundColor: Colors.grey.shade200,
-            radius: 25,
-            backgroundImage: suggestion.avatarUrl == null
-                ? null
-                : NetworkImage(suggestion.avatarUrl!),
-            child: suggestion.avatarUrl == null
-                ? const Icon(Icons.person, color: Colors.grey)
-                : null,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            suggestion.headline,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            '@${suggestion.userName}',
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const Spacer(),
-          ElevatedButton(
-            onPressed: isFollowing ? null : onFollowTap,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryRed,
-              disabledBackgroundColor: Colors.grey.shade400,
-              shape: const StadiumBorder(),
-              minimumSize: const Size(double.infinity, 30),
+    return GestureDetector(
+      onTap: () => _openProfile(context),
+      child: Container(
+        width: 120,
+        margin: const EdgeInsets.only(right: 15),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5),
+          ],
+        ),
+        child: Column(
+          children: [
+            GestureDetector(
+              onTap: () => _openProfile(context),
+              child: const CircleAvatar(backgroundColor: Colors.grey, radius: 25),
             ),
-            child: Text(
-              isFollowing ? 'Following...' : 'Follow',
-              style: const TextStyle(fontSize: 12),
+            const SizedBox(height: 10),
+            Text(
+              name,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-          ),
-        ],
+            const Spacer(),
+            ElevatedButton(
+              onPressed: () {},
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryRed,
+                shape: const StadiumBorder(),
+                minimumSize: const Size(double.infinity, 30),
+              ),
+              child: const Text("Follow", style: TextStyle(fontSize: 12)),
+            ),
+          ],
+        ),
       ),
     );
   }

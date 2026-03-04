@@ -5,7 +5,22 @@ import '../../../core/widgets/post_user_header.dart';
 import '../../feed/domain/models/post.dart';
 import '../widgets/orange_line_painter.dart';
 
-class PostDetailScreen extends StatelessWidget {
+// ─── Comment data model ───────────────────────────────────────────────────────
+class _CommentData {
+  final String name;
+  final String timeAgo;
+  final String text;
+  _CommentData({required this.name, required this.timeAgo, required this.text});
+}
+
+final _kInitialComments = [
+  _CommentData(name: 'Hugo E.', timeAgo: '1 hour ago', text: 'Great session! That split is impressive 🚣'),
+  _CommentData(name: 'Mark K.', timeAgo: '30 min ago', text: 'Nice pace, keep it up!'),
+  _CommentData(name: 'Sophie M.', timeAgo: '15 min ago', text: 'That distance is serious work 💪'),
+];
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+class PostDetailScreen extends StatefulWidget {
   final Post post;
   final VoidCallback onClose;
   final VoidCallback? onAvatarTap;
@@ -18,68 +33,108 @@ class PostDetailScreen extends StatelessWidget {
     required this.post,
     required this.onClose,
     this.onAvatarTap,
-    this.onLike,
-    this.onComment,
-    this.onShare,
   });
+
+  @override
+  State<PostDetailScreen> createState() => _PostDetailScreenState();
+}
+
+class _PostDetailScreenState extends State<PostDetailScreen> {
+  final _scrollController = ScrollController();
+  final _commentsKey = GlobalKey();
+  int _commentCount = _kInitialComments.length;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToComments() {
+    final ctx = _commentsKey.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Column(
+      body: Stack(
         children: [
           _buildGraphHeader(),
-          Expanded(
+          Positioned(
+            top: 220,
+            left: 0,
+            right: 0,
+            bottom: 0,
             child: Container(
-              width: double.infinity,
-              transform: Matrix4.translationValues(0, -30, 0),
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
                 boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
               ),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(25),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const _DragHandle(),
-                    const SizedBox(height: 20),
-                    PostUserHeader(
-                      name: post.userName,
-                      timeAgo: post.timestamp,
-                      avatarUrl: post.avatarUrl,
-                      onAvatarTap: onAvatarTap,
+              child: Column(
+                children: [
+                  const _DragHandle(),
+                  const SizedBox(height: 12),
+                  // ── Sticky user header ──────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 25),
+                    child: PostUserHeader(
+                      name: widget.post.userName,
+                      timeAgo: widget.post.timestamp,
+                      avatarUrl: widget.post.avatarUrl,
+                      onAvatarTap: widget.onAvatarTap,
                     ),
-                    const SizedBox(height: 20),
-                    Text(
-                      post.title,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                  ),
+                  const Divider(height: 16, indent: 25, endIndent: 25),
+                  // ── Scrollable content ──────────────────────────────────
+                  Expanded(
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.fromLTRB(25, 0, 25, 40),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.post.title,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 25),
+                          PostStatsRow(
+                            distance: widget.post.distance,
+                            duration: widget.post.duration,
+                            avgSplit: widget.post.avgSplit,
+                            strokeRate: widget.post.strokeRate,
+                          ),
+                          const SizedBox(height: 30),
+                          _ActionBar(
+                            likes: widget.post.likes,
+                            commentCount: _commentCount,
+                            onCommentTap: _scrollToComments,
+                          ),
+                          const SizedBox(height: 24),
+                          _CommentsSection(
+                            key: _commentsKey,
+                            onCommentAdded: () =>
+                                setState(() => _commentCount++),
+                          ),
+                          const SizedBox(height: 40),
+                          const _BackgroundWatermark(),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 25),
-                    PostStatsRow(
-                      distance: post.distance,
-                      duration: post.duration,
-                      avgSplit: post.avgSplit,
-                      strokeRate: post.strokeRate,
-                    ),
-                    const SizedBox(height: 30),
-                    _ActionBar(
-                      likes: post.likes,
-                      onLike: onLike == null ? null : () => onLike!(post),
-                      onComment: onComment,
-                      onShare: onShare,
-                    ),
-                    const SizedBox(height: 24),
-                    const _CommentsSection(),
-                    const SizedBox(height: 40),
-                    const _BackgroundWatermark(),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -89,29 +144,41 @@ class PostDetailScreen extends StatelessWidget {
   }
 
   Widget _buildGraphHeader() {
-    return Stack(
-      children: [
-        Container(
-          height: 250,
-          width: double.infinity,
-          color: const Color(0xFF2C3E50),
-          child: Center(
-            child: CustomPaint(
-              size: const Size(300, 100),
-              painter: OrangeLinePainter(),
+    return SizedBox(
+      height: 250,
+      child: Stack(
+        children: [
+          Container(
+            height: 250,
+            width: double.infinity,
+            color: const Color(0xFF2C3E50),
+            child: Center(
+              child: CustomPaint(
+                size: const Size(300, 100),
+                painter: OrangeLinePainter(),
+              ),
             ),
           ),
-        ),
-        SafeArea(
-          child: IconButton(
-            icon: const CircleAvatar(
-              backgroundColor: Colors.white70,
-              child: Icon(Icons.arrow_back, color: Colors.red),
+          SafeArea(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const CircleAvatar(
+                    backgroundColor: Colors.white70,
+                    child: Icon(Icons.arrow_back, color: Colors.red),
+                  ),
+                  onPressed: widget.onClose,
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: _SaveButton(),
+                ),
+              ],
             ),
-            onPressed: onClose,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -122,15 +189,42 @@ class _DragHandle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 40,
-        height: 5,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade300,
-          borderRadius: BorderRadius.circular(10),
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Center(
+        child: Container(
+          width: 40,
+          height: 5,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       ),
+    );
+  }
+}
+
+// ─── Save button ──────────────────────────────────────────────────────────────
+class _SaveButton extends StatefulWidget {
+  @override
+  State<_SaveButton> createState() => _SaveButtonState();
+}
+
+class _SaveButtonState extends State<_SaveButton> {
+  bool _saved = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: CircleAvatar(
+        backgroundColor: Colors.white70,
+        child: Icon(
+          _saved ? Icons.bookmark : Icons.bookmark_border,
+          color: _saved ? Colors.red : Colors.grey.shade700,
+        ),
+      ),
+      onPressed: () => setState(() => _saved = !_saved),
     );
   }
 }
@@ -138,16 +232,37 @@ class _DragHandle extends StatelessWidget {
 // ─── Interactive action bar ───────────────────────────────────────────────────
 class _ActionBar extends StatelessWidget {
   final int likes;
-  final Future<void> Function()? onLike;
-  final VoidCallback? onComment;
-  final VoidCallback? onShare;
+  final int commentCount;
+  final VoidCallback? onCommentTap;
 
   const _ActionBar({
     required this.likes,
-    this.onLike,
-    this.onComment,
-    this.onShare,
+    required this.commentCount,
+    this.onCommentTap,
   });
+
+  @override
+  State<_ActionBar> createState() => _ActionBarState();
+}
+
+class _ActionBarState extends State<_ActionBar> {
+  bool _liked = false;
+
+  int get _displayCount => widget.likes + (_liked ? 1 : 0);
+
+  void _toggleLike() => setState(() => _liked = !_liked);
+
+  void _share(BuildContext context) {
+    Clipboard.setData(
+        const ClipboardData(text: 'https://gondolier.app/activity/1'));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Link copied!'),
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -155,22 +270,22 @@ class _ActionBar extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         _ActionBtn(
-          icon: Icons.favorite_border,
-          label: '$likes',
-          color: Colors.grey,
-          onTap: () => onLike?.call(),
+          icon: _liked ? Icons.favorite : Icons.favorite_border,
+          label: '$_displayCount',
+          color: _liked ? Colors.red : Colors.grey,
+          onTap: _toggleLike,
         ),
         _ActionBtn(
           icon: Icons.chat_bubble_outline,
-          label: 'Comment',
+          label: '${widget.commentCount}',
           color: Colors.grey,
-          onTap: onComment,
+          onTap: () => widget.onCommentTap?.call(),
         ),
         _ActionBtn(
           icon: Icons.share_outlined,
           label: 'Share',
           color: Colors.grey,
-          onTap: onShare,
+          onTap: () => _share(context),
         ),
       ],
     );
@@ -205,48 +320,90 @@ class _ActionBtn extends StatelessWidget {
   }
 }
 
-// ─── Comments section ─────────────────────────────────────────────────────────
-class _CommentsSection extends StatelessWidget {
-  const _CommentsSection();
+// ─── Comments section (stateful — supports adding comments) ───────────────────
+class _CommentsSection extends StatefulWidget {
+  final VoidCallback onCommentAdded;
+  const _CommentsSection({super.key, required this.onCommentAdded});
+
+  @override
+  State<_CommentsSection> createState() => _CommentsSectionState();
+}
+
+class _CommentsSectionState extends State<_CommentsSection> {
+  final _inputCtrl = TextEditingController();
+  late final List<_CommentData> _comments;
+
+  @override
+  void initState() {
+    super.initState();
+    _comments = List.of(_kInitialComments);
+  }
+
+  @override
+  void dispose() {
+    _inputCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final text = _inputCtrl.text.trim();
+    if (text.isEmpty) return;
+    setState(() {
+      _comments.add(_CommentData(name: 'You', timeAgo: 'just now', text: text));
+      _inputCtrl.clear();
+    });
+    widget.onCommentAdded();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Comments',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        Text(
+          'Comments (${_comments.length})',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        _CommentTile(
-          name: 'Hugo E.',
-          timeAgo: '1 hour ago',
-          text: 'Great session! That split is impressive 🚣',
-        ),
-        const SizedBox(height: 10),
-        _CommentTile(
-          name: 'Mark K.',
-          timeAgo: '30 min ago',
-          text: 'Nice pace, keep it up!',
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          decoration: InputDecoration(
-            hintText: 'Add a comment…',
-            hintStyle: const TextStyle(color: Colors.grey),
-            filled: true,
-            fillColor: const Color(0xFFF5F5F5),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
+        ..._comments.map((c) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _CommentTile(data: c),
+            )),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _inputCtrl,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _submit(),
+                decoration: InputDecoration(
+                  hintText: 'Add a comment…',
+                  hintStyle: const TextStyle(color: Colors.grey),
+                  filled: true,
+                  fillColor: const Color(0xFFF5F5F5),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
             ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(24),
-              borderSide: BorderSide.none,
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: _submit,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.send, color: Colors.white, size: 20),
+              ),
             ),
-            suffixIcon: const Icon(Icons.send, color: Colors.red),
-          ),
+          ],
         ),
       ],
     );
@@ -254,15 +411,8 @@ class _CommentsSection extends StatelessWidget {
 }
 
 class _CommentTile extends StatelessWidget {
-  final String name;
-  final String timeAgo;
-  final String text;
-
-  const _CommentTile({
-    required this.name,
-    required this.timeAgo,
-    required this.text,
-  });
+  final _CommentData data;
+  const _CommentTile({required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -277,22 +427,17 @@ class _CommentTile extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
+                  Text(data.name,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 13)),
                   const SizedBox(width: 8),
-                  Text(
-                    timeAgo,
-                    style: const TextStyle(color: Colors.grey, fontSize: 11),
-                  ),
+                  Text(data.timeAgo,
+                      style: const TextStyle(
+                          color: Colors.grey, fontSize: 11)),
                 ],
               ),
               const SizedBox(height: 3),
-              Text(text, style: const TextStyle(fontSize: 13)),
+              Text(data.text, style: const TextStyle(fontSize: 13)),
             ],
           ),
         ),
