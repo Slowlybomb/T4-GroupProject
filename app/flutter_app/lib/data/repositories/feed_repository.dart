@@ -20,6 +20,12 @@ class FeedRepository {
       if (remoteActivities.isNotEmpty) {
         return remoteActivities.map((dto) => dto.toActivityModel()).toList();
       }
+
+      // Keep the feed populated for demo/early-stage environments where the
+      // backend is reachable but currently has no activities.
+      return _buildLocalFallbackFeed()
+          .map((dto) => dto.toActivityModel())
+          .toList();
     } on ApiError {
       if (!_useLocalFallback) {
         rethrow;
@@ -48,6 +54,8 @@ class FeedRepository {
       ActivityDto(
         id: '00000000-0000-0000-0000-000000000001',
         userId: 'fallback-hugo',
+        username: 'hugo',
+        displayName: 'Hugo',
         title: 'Hard session on the ergometer today!',
         notes: null,
         startTime: now.subtract(const Duration(hours: 2)),
@@ -65,6 +73,8 @@ class FeedRepository {
       ActivityDto(
         id: '00000000-0000-0000-0000-000000000002',
         userId: 'fallback-sarah',
+        username: 'sarah',
+        displayName: 'Sarah',
         title: 'Morning 5k piece, feeling strong.',
         notes: null,
         startTime: now.subtract(const Duration(hours: 5)),

@@ -32,6 +32,7 @@ class RuntimeConfig {
       useLocalFeedFallback: _parseBool(
         const String.fromEnvironment(
           _useLocalFeedFallbackKey,
+          // Default to true so first-run/demo environments don't show an empty feed.
           defaultValue: 'true',
         ),
       ),

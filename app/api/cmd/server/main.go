@@ -29,10 +29,13 @@ import (
 )
 
 type Activity struct {
-	// This shape mirrors public.activities + derived counters (likes/comments).
+	// This shape mirrors public.activities plus profile metadata and counters.
 	// Pointer fields represent nullable DB columns.
 	ID                  string          `json:"id"`
 	UserID              string          `json:"user_id"`
+	Username            *string         `json:"username,omitempty"`
+	DisplayName         *string         `json:"display_name,omitempty"`
+	AvatarURL           *string         `json:"avatar_url,omitempty"`
 	Title               *string         `json:"title,omitempty"`
 	Notes               *string         `json:"notes,omitempty"`
 	StartTime           time.Time       `json:"start_time"`
@@ -1412,6 +1415,9 @@ func requestLogger() gin.HandlerFunc {
 const activitySelectColumns = `
 a.id::text,
 a.user_id::text,
+p.username,
+p.display_name,
+p.avatar_url,
 a.title,
 a.notes,
 a.start_time,
@@ -1431,6 +1437,7 @@ const listActivitiesQuery = `
 -- List own activities and public activities for feed-like behavior.
 select ` + activitySelectColumns + `
 from public.activities a
+left join public.profiles p on p.id = a.user_id
 where a.user_id = $1::uuid
    or a.visibility = 'public'
 order by a.start_time desc
@@ -1441,6 +1448,7 @@ const getActivityQuery = `
 -- Fetch a single activity if visible to requester.
 select ` + activitySelectColumns + `
 from public.activities a
+left join public.profiles p on p.id = a.user_id
 where a.id = $2::uuid
   and (a.user_id = $1::uuid or a.visibility = 'public')
 limit 1
@@ -1480,6 +1488,7 @@ with inserted as (
 select ` + activitySelectColumns + `
 from public.activities a
 join inserted i on i.id = a.id
+left join public.profiles p on p.id = a.user_id
 `
 
 const ensureProfileQuery = `
@@ -1653,6 +1662,9 @@ func scanActivity(scanner interface{ Scan(dest ...any) error }) (Activity, error
 	// sql.Null* keeps null semantics explicit while scanning optional DB columns.
 	var (
 		activity            Activity
+		username            sql.NullString
+		displayName         sql.NullString
+		avatarURL           sql.NullString
 		title               sql.NullString
 		notes               sql.NullString
 		durationSeconds     sql.NullInt32
@@ -1668,6 +1680,9 @@ func scanActivity(scanner interface{ Scan(dest ...any) error }) (Activity, error
 	if err := scanner.Scan(
 		&activity.ID,
 		&activity.UserID,
+		&username,
+		&displayName,
+		&avatarURL,
 		&title,
 		&notes,
 		&activity.StartTime,
@@ -1685,6 +1700,15 @@ func scanActivity(scanner interface{ Scan(dest ...any) error }) (Activity, error
 		return Activity{}, err
 	}
 
+	if username.Valid {
+		activity.Username = stringPtr(username.String)
+	}
+	if displayName.Valid {
+		activity.DisplayName = stringPtr(displayName.String)
+	}
+	if avatarURL.Valid {
+		activity.AvatarURL = stringPtr(avatarURL.String)
+	}
 	if title.Valid {
 		activity.Title = stringPtr(title.String)
 	}

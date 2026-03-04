@@ -1,8 +1,10 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/repositories/activity_api_repository.dart';
+import '../data/repositories/auth_repository.dart';
 import '../data/repositories/dio_activity_api_repository.dart';
 import '../data/repositories/feed_repository.dart';
+import '../data/repositories/supabase_auth_repository.dart';
 import '../data/repositories/user_repository.dart';
 import 'config/runtime_config.dart';
 import 'network/api_client.dart';
@@ -16,6 +18,7 @@ class AppDependencies {
   final ActivityApiRepository activityApiRepository;
   final FeedRepository feedRepository;
   final UserRepository userRepository;
+  final AuthRepository authRepository;
 
   const AppDependencies({
     required this.runtimeConfig,
@@ -25,6 +28,7 @@ class AppDependencies {
     required this.activityApiRepository,
     required this.feedRepository,
     required this.userRepository,
+    required this.authRepository,
   });
 
   factory AppDependencies.create(RuntimeConfig runtimeConfig) {
@@ -48,6 +52,7 @@ class AppDependencies {
         useLocalFallback: runtimeConfig.useLocalFeedFallback,
       ),
       userRepository: UserRepository(),
+      authRepository: SupabaseAuthRepository(supabaseClient),
     );
   }
 
@@ -58,6 +63,10 @@ class AppDependencies {
 
 class Locator {
   static AppDependencies? _dependencies;
+
+  static bool get isInitialized => _dependencies != null;
+
+  static AppDependencies? get maybeDependencies => _dependencies;
 
   static Future<void> initialize(RuntimeConfig runtimeConfig) async {
     // Idempotent app bootstrap.
@@ -90,4 +99,6 @@ class Locator {
 
   static ActivityApiRepository get activityApiRepository =>
       dependencies.activityApiRepository;
+
+  static AuthRepository get authRepository => dependencies.authRepository;
 }

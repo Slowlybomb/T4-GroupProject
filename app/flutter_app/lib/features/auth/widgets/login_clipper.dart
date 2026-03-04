@@ -11,6 +11,7 @@ class LoginClipper extends CustomClipper<Path> {
     path.close();
     return path;
   }
+
   @override
   bool shouldReclip(oldClipper) => false;
 }

@@ -26,7 +26,9 @@ class _FilterTabsState extends State<FilterTabs> {
             decoration: BoxDecoration(
               color: isSelected ? AppColors.primaryRed : Colors.transparent,
               borderRadius: BorderRadius.circular(20),
-              border: isSelected ? null : Border.all(color: Colors.grey.shade300),
+              border: isSelected
+                  ? null
+                  : Border.all(color: Colors.grey.shade300),
             ),
             child: Text(
               _tabs[index],
