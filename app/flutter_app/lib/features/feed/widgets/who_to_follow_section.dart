@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colour_theme.dart';
+import '../../profile/view/user_profile_screen.dart';
 
 class WhoToFollowSection extends StatelessWidget {
   const WhoToFollowSection({super.key});
@@ -24,9 +25,7 @@ class WhoToFollowSection extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.only(left: 20),
             itemCount: 5,
-            itemBuilder: (context, index) {
-              return const _FollowerCard();
-            },
+            itemBuilder: (context, index) => _FollowerCard(name: 'Rower ${index + 1}'),
           ),
         ),
         const SizedBox(height: 10),
@@ -36,40 +35,56 @@ class WhoToFollowSection extends StatelessWidget {
 }
 
 class _FollowerCard extends StatelessWidget {
-  const _FollowerCard();
+  final String name;
+  const _FollowerCard({required this.name});
+
+  void _openProfile(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => UserProfileScreen(name: name)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 120,
-      margin: const EdgeInsets.only(right: 15),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5),
-        ],
-      ),
-      child: Column(
-        children: [
-          const CircleAvatar(backgroundColor: Colors.grey, radius: 25),
-          const SizedBox(height: 10),
-          const Text(
-            "User",
-            style: TextStyle(fontWeight: FontWeight.bold),
-            maxLines: 1,
-          ),
-          const Spacer(),
-          ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryRed,
-              shape: const StadiumBorder(),
-              minimumSize: const Size(double.infinity, 30),
+    return GestureDetector(
+      onTap: () => _openProfile(context),
+      child: Container(
+        width: 120,
+        margin: const EdgeInsets.only(right: 15),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5),
+          ],
+        ),
+        child: Column(
+          children: [
+            GestureDetector(
+              onTap: () => _openProfile(context),
+              child: const CircleAvatar(backgroundColor: Colors.grey, radius: 25),
             ),
-            child: const Text("Follow", style: TextStyle(fontSize: 12)),
-          ),
-        ],
+            const SizedBox(height: 10),
+            Text(
+              name,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const Spacer(),
+            ElevatedButton(
+              onPressed: () {},
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryRed,
+                shape: const StadiumBorder(),
+                minimumSize: const Size(double.infinity, 30),
+              ),
+              child: const Text("Follow", style: TextStyle(fontSize: 12)),
+            ),
+          ],
+        ),
       ),
     );
   }

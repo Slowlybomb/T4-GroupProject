@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colour_theme.dart';
+import '../../stats/view/weekly_progress_screen.dart';
 
 class WeeklySummaryCard extends StatelessWidget {
   const WeeklySummaryCard({super.key});
@@ -41,7 +42,7 @@ class WeeklySummaryCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WeeklyProgressScreen())),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: Colors.red,

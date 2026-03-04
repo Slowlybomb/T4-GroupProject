@@ -6,8 +6,9 @@ import '../domain/models/post.dart';
 
 class ActivityPostCard extends StatelessWidget {
   final Post post;
+  final VoidCallback? onAvatarTap;
 
-  const ActivityPostCard({super.key, required this.post});
+  const ActivityPostCard({super.key, required this.post, this.onAvatarTap});
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +34,7 @@ class ActivityPostCard extends StatelessWidget {
             name: post.userName,
             timeAgo: post.timestamp,
             avatarUrl: post.avatarUrl,
+            onAvatarTap: onAvatarTap,
           ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12.0),

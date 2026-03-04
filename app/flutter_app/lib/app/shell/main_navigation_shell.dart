@@ -6,6 +6,7 @@ import '../../features/activity_detail/view/detail_screen.dart';
 import '../../features/feed/controller/feed_controller.dart';
 import '../../features/feed/view/feed_screen.dart';
 import '../../features/profile/view/profile_screen.dart';
+import '../../features/profile/view/user_profile_screen.dart';
 
 class MainNavigationHub extends StatefulWidget {
   final AuthRepository? authRepository;
@@ -36,6 +37,14 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
                 PostDetailScreen(
                   post: feedController.selectedPost!,
                   onClose: feedController.clearSelectedPost,
+                  onAvatarTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => UserProfileScreen(
+                        name: feedController.selectedPost!.userName,
+                      ),
+                    ),
+                  ),
                 ),
             ],
           ),

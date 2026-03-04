@@ -8,6 +8,7 @@ import '../widgets/filter_tabs.dart';
 import '../widgets/weekly_summary_card.dart';
 import '../widgets/who_to_follow_section.dart';
 import '../../ble/view/ble_session_screen.dart';
+import '../../profile/view/user_profile_screen.dart';
 
 // ─── Hardcoded "Your Posts" data ─────────────────────────────────────────────
 const _kYourPosts = [
@@ -70,9 +71,15 @@ class _FeedScreenState extends State<FeedScreen> {
             slivers.add(const SliverToBoxAdapter(child: _BleConnectCard()));
             slivers.add(SliverList(
               delegate: SliverChildListDelegate(
-                _kYourPosts
-                    .map((p) => ActivityPostCard(post: p))
-                    .toList(),
+                _kYourPosts.map((p) => ActivityPostCard(
+                  post: p,
+                  onAvatarTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => UserProfileScreen(name: p.userName),
+                    ),
+                  ),
+                )).toList(),
               ),
             ));
           } else {
@@ -96,6 +103,7 @@ class _FeedScreenState extends State<FeedScreen> {
               ));
             } else {
               slivers.add(_buildFeedContent(
+                context: context,
                 posts: controller.posts,
                 onPostTap: controller.selectPost,
               ));
@@ -109,6 +117,7 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Widget _buildFeedContent({
+    required BuildContext context,
     required List<Post> posts,
     required ValueChanged<Post> onPostTap,
   }) {
@@ -123,7 +132,15 @@ class _FeedScreenState extends State<FeedScreen> {
       final post = posts[index];
       children.add(InkWell(
         onTap: () => onPostTap(post),
-        child: ActivityPostCard(post: post),
+        child: ActivityPostCard(
+          post: post,
+          onAvatarTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => UserProfileScreen(name: post.userName),
+            ),
+          ),
+        ),
       ));
     }
 

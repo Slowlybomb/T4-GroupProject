@@ -6,22 +6,27 @@ class PostUserHeader extends StatelessWidget {
   final String name;
   final String timeAgo;
   final String? avatarUrl;
+  final VoidCallback? onAvatarTap;
 
   const PostUserHeader({
     super.key,
     required this.name,
     required this.timeAgo,
     this.avatarUrl,
+    this.onAvatarTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        SizedBox(
-          width: 40,
-          height: 40,
-          child: ClipOval(child: _buildProfileImage()),
+        GestureDetector(
+          onTap: onAvatarTap,
+          child: SizedBox(
+            width: 40,
+            height: 40,
+            child: ClipOval(child: _buildProfileImage()),
+          ),
         ),
         const SizedBox(width: 10),
         Column(

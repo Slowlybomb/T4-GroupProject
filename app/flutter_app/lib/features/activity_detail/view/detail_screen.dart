@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/widgets/post_stats_row.dart';
 import '../../../core/widgets/post_user_header.dart';
@@ -8,11 +9,13 @@ import '../widgets/orange_line_painter.dart';
 class PostDetailScreen extends StatelessWidget {
   final Post post;
   final VoidCallback onClose;
+  final VoidCallback? onAvatarTap;
 
   const PostDetailScreen({
     super.key,
     required this.post,
     required this.onClose,
+    this.onAvatarTap,
   });
 
   @override
@@ -42,6 +45,7 @@ class PostDetailScreen extends StatelessWidget {
                       name: post.userName,
                       timeAgo: post.timestamp,
                       avatarUrl: post.avatarUrl,
+                      onAvatarTap: onAvatarTap,
                     ),
                     const SizedBox(height: 20),
                     Text(
@@ -58,8 +62,10 @@ class PostDetailScreen extends StatelessWidget {
                       avgSplit: post.avgSplit,
                       strokeRate: post.strokeRate,
                     ),
-                    const SizedBox(height: 40),
-                    _ActionIcons(likes: post.likes),
+                    const SizedBox(height: 30),
+                    _ActionBar(likes: post.likes),
+                    const SizedBox(height: 24),
+                    const _CommentsSection(),
                     const SizedBox(height: 40),
                     const _BackgroundWatermark(),
                   ],
@@ -100,6 +106,7 @@ class PostDetailScreen extends StatelessWidget {
   }
 }
 
+// ─── Drag handle ─────────────────────────────────────────────────────────────
 class _DragHandle extends StatelessWidget {
   const _DragHandle();
 
@@ -118,34 +125,195 @@ class _DragHandle extends StatelessWidget {
   }
 }
 
-class _ActionIcons extends StatelessWidget {
+// ─── Interactive action bar ───────────────────────────────────────────────────
+class _ActionBar extends StatefulWidget {
   final int likes;
-
-  const _ActionIcons({required this.likes});
+  const _ActionBar({required this.likes});
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _actionButton(Icons.favorite_border, 'Like ($likes)'),
-        _actionButton(Icons.chat_bubble_outline, 'Comment'),
-        _actionButton(Icons.share_outlined, 'Share'),
-      ],
+  State<_ActionBar> createState() => _ActionBarState();
+}
+
+class _ActionBarState extends State<_ActionBar> {
+  late bool _liked;
+  late int _count;
+  bool _showComments = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _liked = false;
+    _count = widget.likes;
+  }
+
+  void _toggleLike() {
+    setState(() {
+      _liked = !_liked;
+      _count += _liked ? 1 : -1;
+    });
+  }
+
+  void _share(BuildContext context) {
+    Clipboard.setData(const ClipboardData(text: 'https://gondolier.app/activity/1'));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Link copied!'),
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
-  Widget _actionButton(IconData icon, String label) {
+  @override
+  Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: Colors.red, size: 28),
-        const SizedBox(height: 5),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _ActionBtn(
+              icon: _liked ? Icons.favorite : Icons.favorite_border,
+              label: '$_count',
+              color: _liked ? Colors.red : Colors.grey,
+              onTap: _toggleLike,
+            ),
+            _ActionBtn(
+              icon: Icons.chat_bubble_outline,
+              label: 'Comment',
+              color: _showComments ? Colors.red : Colors.grey,
+              onTap: () => setState(() => _showComments = !_showComments),
+            ),
+            _ActionBtn(
+              icon: Icons.share_outlined,
+              label: 'Share',
+              color: Colors.grey,
+              onTap: () => _share(context),
+            ),
+          ],
+        ),
+        if (_showComments) ...[
+          const SizedBox(height: 16),
+          const _CommentsSection(),
+        ],
       ],
     );
   }
 }
 
+class _ActionBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionBtn({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 4),
+          Text(label, style: TextStyle(fontSize: 12, color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Comments section ─────────────────────────────────────────────────────────
+class _CommentsSection extends StatelessWidget {
+  const _CommentsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Comments',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        _CommentTile(
+          name: 'Hugo E.',
+          timeAgo: '1 hour ago',
+          text: 'Great session! That split is impressive 🚣',
+        ),
+        const SizedBox(height: 10),
+        _CommentTile(
+          name: 'Mark K.',
+          timeAgo: '30 min ago',
+          text: 'Nice pace, keep it up!',
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          decoration: InputDecoration(
+            hintText: 'Add a comment…',
+            hintStyle: const TextStyle(color: Colors.grey),
+            filled: true,
+            fillColor: const Color(0xFFF5F5F5),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(24),
+              borderSide: BorderSide.none,
+            ),
+            suffixIcon: const Icon(Icons.send, color: Colors.red),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CommentTile extends StatelessWidget {
+  final String name;
+  final String timeAgo;
+  final String text;
+
+  const _CommentTile({
+    required this.name,
+    required this.timeAgo,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const CircleAvatar(backgroundColor: Colors.grey, radius: 16),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(width: 8),
+                  Text(timeAgo, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                ],
+              ),
+              const SizedBox(height: 3),
+              Text(text, style: const TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Watermark ────────────────────────────────────────────────────────────────
 class _BackgroundWatermark extends StatelessWidget {
   const _BackgroundWatermark();
 
