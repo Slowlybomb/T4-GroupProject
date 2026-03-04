@@ -132,3 +132,24 @@ flutter pub get
 flutter analyze
 flutter test
 ```
+
+## One-Off Import: Rowing Assets to Activities
+
+Use this script to import the 4 rowing CSV asset sessions as real activities
+for a user account via authenticated API calls (no direct SQL):
+
+```bash
+API_BASE_URL=https://t4-groupproject.onrender.com \
+SUPABASE_URL=https://jbctntbyagqowvfegren.supabase.co \
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpiY3RudGJ5YWdxb3d2ZmVncmVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1MTA0NTMsImV4cCI6MjA4NTA4NjQ1M30.q9RFd9ltQtgK5gS5BrgGpnsMr1rz9ObYhqRP_0ajMGg \
+IMPORT_EMAIL=slyusar.gleb.ua@gmail.com \
+IMPORT_PASSWORD=123456 \
+EXPECTED_UID=c7dd9047-bbac-4d28-a3eb-a877326892ab \
+python3 app/scripts/import_rowing_sessions.py
+```
+
+Dry-run mode (parses assets and derives payloads only, no network requests):
+
+```bash
+python3 app/scripts/import_rowing_sessions.py --dry-run
+```
