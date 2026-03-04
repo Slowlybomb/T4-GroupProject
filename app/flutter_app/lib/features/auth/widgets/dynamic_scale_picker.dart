@@ -4,7 +4,9 @@ import '../../../core/widgets/navigation_row.dart';
 class DynamicScalePicker extends StatefulWidget {
   final String title, unit;
   final int min, max, initial;
-  final VoidCallback onNext, onBack;
+  final VoidCallback onBack;
+  final ValueChanged<int> onNext;
+  
 
   const DynamicScalePicker({
     super.key,
@@ -57,10 +59,14 @@ class _DynamicScalePickerState extends State<DynamicScalePicker> {
               ),
             ),
           ),
-          NavigationRow(onBack: widget.onBack, onNext: widget.onNext),
+          NavigationRow(onBack: widget.onBack, onNext:() => widget.onNext(_currentValue),),
           const SizedBox(height: 50),
         ],
       ),
     );
+  }
+
+  int get _currentValue {
+    return widget.min + _controller.selectedItem;
   }
 }
