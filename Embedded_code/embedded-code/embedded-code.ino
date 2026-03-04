@@ -43,7 +43,7 @@ Adafruit_ILI9341 display = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define INFER_INTERVAL_MS    100   // interval to run the infrence on the data
 #define DISPLAY_UPDATE_MS    1000  // update the screen every second
 
-// ─── Session state ───────────────────────────────────────────────────────────
+// Session state
 // number of strokes to store, 1000 strokes is roughly 50 minutes 
 #define MAX_STROKES 2000
 
