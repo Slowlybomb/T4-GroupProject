@@ -2,275 +2,44 @@ import 'package:flutter/material.dart';
 
 import '../../../core/locator.dart';
 import '../../../core/theme/app_colour_theme.dart';
-import '../../../core/widgets/primarybutton.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../stats/domain/models/user_stats.dart';
+import 'settings_screen.dart';
 
-class UserStatsScreen extends StatefulWidget {
+// ─── Demo data ────────────────────────────────────────────────────────────────
+
+const _kDefaultStats = UserStats(
+  weeklyDistanceKm: 28.6,
+  weeklyMinutes: 144,
+  trainingLogDateRange: 'Mon 24 Feb – Sun 2 Mar 2026',
+  trainingLogEntries: [
+    TrainingLogEntry(label: 'M', trainingMinutes: 42),
+    TrainingLogEntry(label: 'T', trainingMinutes: 0),
+    TrainingLogEntry(label: 'W', trainingMinutes: 72, highlighted: true),
+    TrainingLogEntry(label: 'T', trainingMinutes: 0),
+    TrainingLogEntry(label: 'F', trainingMinutes: 27),
+    TrainingLogEntry(label: 'S', trainingMinutes: 0),
+    TrainingLogEntry(label: 'S', trainingMinutes: 0),
+  ],
+);
+
+// km rowed each of the last 12 weeks (oldest → newest)
+const _kWeeklyKm = [
+  12.1, 18.4, 9.0, 22.3, 15.7, 28.6,
+  11.2, 19.8, 24.5, 16.0, 31.2, 28.6,
+];
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
+class UserStatsScreen extends StatelessWidget {
   final AuthRepository? authRepository;
   final UserStats userStats;
 
   const UserStatsScreen({
     super.key,
     this.authRepository,
-    this.userStats = _defaultUserStats,
+    this.userStats = _kDefaultStats,
   });
-
-  static const UserStats _defaultUserStats = UserStats(
-    weeklyDistanceKm: 0,
-    weeklyMinutes: 0,
-    trainingLogDateRange: 'Feb 2 - Feb 8, 2026',
-    trainingLogEntries: [
-      TrainingLogEntry(label: 'M'),
-      TrainingLogEntry(label: 'T'),
-      TrainingLogEntry(label: '1h', highlighted: true),
-      TrainingLogEntry(label: 'T'),
-    ],
-  );
-
-  @override
-  State<UserStatsScreen> createState() => _UserStatsScreenState();
-}
-
-class _UserStatsScreenState extends State<UserStatsScreen> {
-  late final AuthRepository _authRepository;
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
-
-  bool _isSaving = false;
-  String? _errorMessage;
-  String? _successMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _authRepository = widget.authRepository ?? Locator.authRepository;
-
-    final accountDetails = _authRepository.currentAccountDetails;
-    _nameController.text = accountDetails?.fullName ?? '';
-    _emailController.text = accountDetails?.email ?? '';
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _saveAccountDetails() async {
-    final isValid = _formKey.currentState?.validate() ?? false;
-    if (!isValid) {
-      return;
-    }
-
-    setState(() {
-      _isSaving = true;
-      _errorMessage = null;
-      _successMessage = null;
-    });
-
-    try {
-      final nextPassword = _passwordController.text.trim();
-      await _authRepository.updateAccountDetails(
-        fullName: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        password: nextPassword.isEmpty ? null : nextPassword,
-      );
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _successMessage = nextPassword.isEmpty
-            ? 'Account details updated.'
-            : 'Account details and password updated.';
-        _passwordController.clear();
-        _confirmPasswordController.clear();
-      });
-    } on AuthFailure catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() => _errorMessage = error.message);
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      setState(
-        () => _errorMessage =
-            'Unable to update account details. Please try again.',
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
-    }
-  }
-
-  String? _validateName(String? value) {
-    final name = value?.trim() ?? '';
-    if (name.isEmpty) {
-      return 'Name is required';
-    }
-    if (name.length < 2) {
-      return 'Name must be at least 2 characters';
-    }
-    return null;
-  }
-
-  String? _validateEmail(String? value) {
-    final email = value?.trim() ?? '';
-    if (email.isEmpty) {
-      return 'Email is required';
-    }
-
-    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
-    if (!emailRegex.hasMatch(email)) {
-      return 'Enter a valid email';
-    }
-
-    return null;
-  }
-
-  String? _validatePassword(String? value) {
-    final password = value?.trim() ?? '';
-    if (password.isEmpty) {
-      return null;
-    }
-    if (password.length < 6) {
-      return 'Password must be at least 6 characters';
-    }
-    return null;
-  }
-
-  String? _validateConfirmPassword(String? value) {
-    final nextPassword = _passwordController.text.trim();
-    final confirmPassword = value?.trim() ?? '';
-
-    if (nextPassword.isEmpty && confirmPassword.isEmpty) {
-      return null;
-    }
-
-    if (confirmPassword.isEmpty) {
-      return 'Confirm your new password';
-    }
-
-    if (confirmPassword != nextPassword) {
-      return 'Passwords do not match';
-    }
-
-    return null;
-  }
-
-  Widget _buildAccountDetailsSection() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x11000000),
-            blurRadius: 12,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Account details',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.strongTextBlack,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _nameController,
-              validator: _validateName,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              validator: _validateEmail,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _passwordController,
-              obscureText: true,
-              validator: _validatePassword,
-              decoration: const InputDecoration(
-                labelText: 'New Password (optional)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _confirmPasswordController,
-              obscureText: true,
-              validator: _validateConfirmPassword,
-              decoration: const InputDecoration(
-                labelText: 'Confirm New Password',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                _errorMessage!,
-                style: const TextStyle(
-                  color: AppColors.primaryRed,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-            if (_successMessage != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                _successMessage!,
-                style: const TextStyle(
-                  color: Colors.green,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-            const SizedBox(height: 14),
-            Center(
-              child: AbsorbPointer(
-                absorbing: _isSaving,
-                child: PrimaryButton(
-                  text: _isSaving ? 'Saving...' : 'Save Changes',
-                  onPressed: _saveAccountDetails,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -278,7 +47,7 @@ class _UserStatsScreenState extends State<UserStatsScreen> {
       backgroundColor: AppColors.white,
       appBar: AppBar(
         title: const Text(
-          "You",
+          'You',
           style: TextStyle(
             color: AppColors.primaryRed,
             fontWeight: FontWeight.bold,
@@ -286,23 +55,37 @@ class _UserStatsScreenState extends State<UserStatsScreen> {
         ),
         backgroundColor: AppColors.white,
         elevation: 0,
-        actions: const [
+        actions: [
           Padding(
-            padding: EdgeInsets.all(8.0),
+            padding: const EdgeInsets.only(right: 4),
+            child: IconButton(
+              icon: const Icon(Icons.settings_outlined,
+                  color: AppColors.primaryRed),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProfileSettingsScreen(
+                    authRepository:
+                        authRepository ?? Locator.authRepository,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(right: 12),
             child: CircleAvatar(backgroundColor: Colors.grey, radius: 15),
           ),
         ],
       ),
       body: SingleChildScrollView(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildAccountDetailsSection(),
-            _ThisWeekSummary(stats: widget.userStats),
-            const Text(
-              "More graphs",
-              style: TextStyle(fontSize: 40, fontWeight: FontWeight.w300),
-            ),
-            _TrainingLogCard(stats: widget.userStats),
+            _TwelveWeekChart(weeklyKm: _kWeeklyKm),
+            _ThisWeekSummary(stats: userStats),
+            _TrainingLogCard(stats: userStats),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -310,38 +93,71 @@ class _UserStatsScreenState extends State<UserStatsScreen> {
   }
 }
 
-// Internal helpers for the Profile Screen
-class _ThisWeekSummary extends StatelessWidget {
-  final UserStats stats;
+// ─── 12-week line chart ───────────────────────────────────────────────────────
 
-  const _ThisWeekSummary({required this.stats});
+class _TwelveWeekChart extends StatelessWidget {
+  final List<double> weeklyKm;
+  const _TwelveWeekChart({required this.weeklyKm});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
+    final maxKm = weeklyKm.fold(0.0, (a, b) => a > b ? a : b);
+    final totalKm = weeklyKm.fold(0.0, (a, b) => a + b);
+    final totalHours = totalKm * 5.2 / 60;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+      decoration: BoxDecoration(
+        color: AppColors.primaryRed,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "This Week",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+            '12-Week Activity',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
+          const SizedBox(height: 4),
           Row(
             children: [
               Text(
-                "Distance: ${stats.weeklyDistanceKm.toStringAsFixed(0)} km  ",
-                style: const TextStyle(color: AppColors.textGrey),
+                '${totalKm.toStringAsFixed(1)} km',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
+              const SizedBox(width: 16),
               Text(
-                "Time: ${stats.weeklyMinutes} m",
-                style: const TextStyle(color: AppColors.textGrey),
+                '${totalHours.toStringAsFixed(1)} h',
+                style: const TextStyle(color: Colors.white70, fontSize: 16),
               ),
             ],
           ),
-          const SizedBox(
-            height: 100,
-            child: Center(child: Text("--- Graph Placeholder ---")),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 110,
+            child: CustomPaint(
+              size: const Size(double.infinity, 110),
+              painter: _LineChartPainter(data: weeklyKm, maxValue: maxKm),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Text('12w ago',
+                  style: TextStyle(color: Colors.white54, fontSize: 10)),
+              Text('This week',
+                  style: TextStyle(color: Colors.white54, fontSize: 10)),
+            ],
           ),
         ],
       ),
@@ -349,15 +165,163 @@ class _ThisWeekSummary extends StatelessWidget {
   }
 }
 
+class _LineChartPainter extends CustomPainter {
+  final List<double> data;
+  final double maxValue;
+
+  const _LineChartPainter({required this.data, required this.maxValue});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (data.isEmpty || maxValue == 0) return;
+
+    const leftPad = 36.0; // space for Y-axis labels
+    const topPad = 8.0;
+    const bottomPad = 4.0;
+    final chartW = size.width - leftPad;
+    final chartH = size.height - topPad - bottomPad;
+
+    final gridPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.2)
+      ..strokeWidth = 1;
+
+    final linePaint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final dotFill = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
+    final dotBorder = Paint()
+      ..color = AppColors.primaryRed
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    // Y-axis labels + gridlines at 0%, 50%, 100%
+    final labelStyle = TextStyle(
+      color: Colors.white.withValues(alpha: 0.7),
+      fontSize: 9,
+    );
+    const levels = [0.0, 0.5, 1.0];
+    for (final frac in levels) {
+      final y = topPad + chartH * (1 - frac);
+      canvas.drawLine(
+        Offset(leftPad, y),
+        Offset(size.width, y),
+        gridPaint,
+      );
+      final label = frac == 0
+          ? '0'
+          : '${(maxValue * frac).round()} km';
+      final tp = TextPainter(
+        text: TextSpan(text: label, style: labelStyle),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(0, y - tp.height / 2));
+    }
+
+    // Compute point positions
+    final points = <Offset>[];
+    for (int i = 0; i < data.length; i++) {
+      final x = leftPad + (i / (data.length - 1)) * chartW;
+      final y = topPad + chartH * (1 - data[i] / maxValue);
+      points.add(Offset(x, y));
+    }
+
+    // Draw polyline
+    final path = Path()..moveTo(points.first.dx, points.first.dy);
+    for (final pt in points.skip(1)) {
+      path.lineTo(pt.dx, pt.dy);
+    }
+    canvas.drawPath(path, linePaint);
+
+    // Draw dots
+    for (final pt in points) {
+      canvas.drawCircle(pt, 4, dotFill);
+      canvas.drawCircle(pt, 4, dotBorder);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_LineChartPainter old) =>
+      old.data != data || old.maxValue != maxValue;
+}
+
+// ─── This week summary ────────────────────────────────────────────────────────
+
+class _ThisWeekSummary extends StatelessWidget {
+  final UserStats stats;
+  const _ThisWeekSummary({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'This Week',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _WeekStat(
+                label: 'Distance',
+                value: '${stats.weeklyDistanceKm.toStringAsFixed(1)} km',
+              ),
+              const SizedBox(width: 24),
+              _WeekStat(
+                label: 'Time',
+                value: '${stats.weeklyMinutes} min',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeekStat extends StatelessWidget {
+  final String label, value;
+  const _WeekStat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(color: AppColors.textGrey, fontSize: 12)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Training log card ────────────────────────────────────────────────────────
+
 class _TrainingLogCard extends StatelessWidget {
   final UserStats stats;
-
   const _TrainingLogCard({required this.stats});
 
   @override
   Widget build(BuildContext context) {
+    final maxMinutes = stats.trainingLogEntries
+        .map((e) => e.trainingMinutes)
+        .fold(0, (a, b) => a > b ? a : b);
+
     return Container(
-      margin: const EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.primaryRed,
@@ -367,8 +331,12 @@ class _TrainingLogCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Training Log",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            'Training Log',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
           ),
           Text(
             stats.trainingLogDateRange,
@@ -378,7 +346,8 @@ class _TrainingLogCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: stats.trainingLogEntries
-                .map((entry) => _TrainingLogEntryAvatar(entry: entry))
+                .map((e) =>
+                    _TrainingDay(entry: e, maxMinutes: maxMinutes))
                 .toList(growable: false),
           ),
         ],
@@ -387,35 +356,47 @@ class _TrainingLogCard extends StatelessWidget {
   }
 }
 
-class _TrainingLogEntryAvatar extends StatelessWidget {
+class _TrainingDay extends StatelessWidget {
   final TrainingLogEntry entry;
-
-  const _TrainingLogEntryAvatar({required this.entry});
+  final int maxMinutes;
+  const _TrainingDay({required this.entry, required this.maxMinutes});
 
   @override
   Widget build(BuildContext context) {
-    if (entry.highlighted) {
-      return CircleAvatar(
-        radius: 20,
-        backgroundColor: Colors.white,
-        child: Text(
+    final hasTraining = entry.trainingMinutes > 0;
+    // Scale radius: 14 (rest) → 24 (max effort)
+    final radius = hasTraining && maxMinutes > 0
+        ? 14.0 + 10.0 * (entry.trainingMinutes / maxMinutes)
+        : 14.0;
+
+    return Column(
+      children: [
+        // Day letter above
+        Text(
           entry.label,
-          style: const TextStyle(
-            color: AppColors.primaryRed,
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
+          style: TextStyle(
+            color: hasTraining ? Colors.white : Colors.white54,
+            fontSize: 11,
+            fontWeight: hasTraining ? FontWeight.bold : FontWeight.normal,
           ),
         ),
-      );
-    }
-
-    return CircleAvatar(
-      radius: 15,
-      backgroundColor: Colors.white24,
-      child: Text(
-        entry.label,
-        style: const TextStyle(color: Colors.white, fontSize: 10),
-      ),
+        const SizedBox(height: 6),
+        // Circle containing time
+        CircleAvatar(
+          radius: radius,
+          backgroundColor: hasTraining ? Colors.white : Colors.white24,
+          child: hasTraining
+              ? Text(
+                  '${entry.trainingMinutes}m',
+                  style: TextStyle(
+                    color: AppColors.primaryRed,
+                    fontSize: radius > 18 ? 10 : 8,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              : null,
+        ),
+      ],
     );
   }
 }

@@ -1,8 +1,13 @@
 class TrainingLogEntry {
   final String label;
   final bool highlighted;
+  final int trainingMinutes;
 
-  const TrainingLogEntry({required this.label, this.highlighted = false});
+  const TrainingLogEntry({
+    required this.label,
+    this.highlighted = false,
+    this.trainingMinutes = 0,
+  });
 }
 
 class UserStats {

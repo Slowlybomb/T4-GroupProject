@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import '../widgets/post_stats_row.dart';
 import '../controller/feed_controller.dart';
 import '../domain/models/post.dart';
 import '../widgets/activity_post_card.dart';
@@ -10,7 +10,7 @@ import '../widgets/who_to_follow_section.dart';
 import '../../ble/view/ble_session_screen.dart';
 import '../../profile/view/user_profile_screen.dart';
 
-// ─── Hardcoded "Your Posts" data ─────────────────────────────────────────────
+// ─── "Your Posts" demo data ───────────────────────────────────────────────────
 const _kYourPosts = [
   Post(
     userName: 'You',
@@ -44,6 +44,92 @@ const _kYourPosts = [
   ),
 ];
 
+// ─── Discover tab demo data ───────────────────────────────────────────────────
+const _kDiscoverPosts = [
+  Post(
+    userName: 'Emma Walsh',
+    timestamp: '1 hour ago',
+    title: 'Sunrise sprint on the Barrow',
+    distance: '6.2 km',
+    duration: '31:05',
+    avgSplit: '2:30',
+    strokeRate: '24 spm',
+    likes: 22,
+  ),
+  Post(
+    userName: 'Liam Brennan',
+    timestamp: '3 hours ago',
+    title: 'Club time trial',
+    distance: '2.0 km',
+    duration: '07:48',
+    avgSplit: '1:57',
+    strokeRate: '28 spm',
+    likes: 45,
+  ),
+  Post(
+    userName: 'Sophie Müller',
+    timestamp: '5 hours ago',
+    title: 'Recovery paddle — Rhine',
+    distance: '9.8 km',
+    duration: '58:20',
+    avgSplit: '2:58',
+    strokeRate: '18 spm',
+    likes: 11,
+  ),
+  Post(
+    userName: 'Cian Murphy',
+    timestamp: 'Yesterday',
+    title: 'Half-marathon prep',
+    distance: '21.1 km',
+    duration: '1:48:33',
+    avgSplit: '2:34',
+    strokeRate: '22 spm',
+    likes: 67,
+  ),
+  Post(
+    userName: 'Aoife Doyle',
+    timestamp: 'Yesterday',
+    title: 'Interval sets — Grand Canal',
+    distance: '7.5 km',
+    duration: '38:12',
+    avgSplit: '2:33',
+    strokeRate: '26 spm',
+    likes: 19,
+  ),
+  Post(
+    userName: 'Tom Fitzgerald',
+    timestamp: '2 days ago',
+    title: 'Steady-state endurance',
+    distance: '16.0 km',
+    duration: '1:25:10',
+    avgSplit: '2:39',
+    strokeRate: '20 spm',
+    likes: 34,
+  ),
+  Post(
+    userName: 'Niamh Kelly',
+    timestamp: '2 days ago',
+    title: 'Morning double — River Lee',
+    distance: '12.4 km',
+    duration: '1:04:50',
+    avgSplit: '2:36',
+    strokeRate: '21 spm',
+    likes: 28,
+  ),
+  Post(
+    userName: 'Ryan Connolly',
+    timestamp: '3 days ago',
+    title: 'National qualifying piece',
+    distance: '5.0 km',
+    duration: '20:15',
+    avgSplit: '2:01',
+    strokeRate: '30 spm',
+    likes: 103,
+  ),
+];
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
 
@@ -62,7 +148,8 @@ class _FeedScreenState extends State<FeedScreen> {
         builder: (context, controller, child) {
           final slivers = <Widget>[
             SliverToBoxAdapter(
-              child: _MainHeader(onTabChanged: (i) => setState(() => _selectedTab = i)),
+              child: _MainHeader(
+                  onTabChanged: (i) => setState(() => _selectedTab = i)),
             ),
           ];
 
@@ -71,27 +158,40 @@ class _FeedScreenState extends State<FeedScreen> {
             slivers.add(const SliverToBoxAdapter(child: _BleConnectCard()));
             slivers.add(SliverList(
               delegate: SliverChildListDelegate(
-                _kYourPosts.map((p) => ActivityPostCard(
-                  post: p,
-                  onAvatarTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => UserProfileScreen(name: p.userName),
-                    ),
-                  ),
-                )).toList(),
+                _kYourPosts
+                    .map((p) => ActivityPostCard(
+                          post: p,
+                          onAvatarTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  UserProfileScreen(name: p.userName),
+                            ),
+                          ),
+                        ))
+                    .toList(),
               ),
             ));
+          } else if (_selectedTab == 1) {
+            // ── Discover tab ──────────────────────────────────────────────
+            slivers.add(_buildFeedContent(
+              context: context,
+              posts: _kDiscoverPosts,
+              onPostTap: controller.selectPost,
+              showWhoToFollow: false,
+            ));
           } else {
-            // ── Following / Discover tabs ─────────────────────────────────
-            slivers.add(const SliverToBoxAdapter(child: WeeklySummaryCard()));
+            // ── Following tab ─────────────────────────────────────────────
+            slivers.add(
+                const SliverToBoxAdapter(child: WeeklySummaryCard()));
 
             if (controller.isLoading && controller.posts.isEmpty) {
               slivers.add(const SliverFillRemaining(
                 hasScrollBody: false,
                 child: Center(child: CircularProgressIndicator()),
               ));
-            } else if (controller.errorMessage != null && controller.posts.isEmpty) {
+            } else if (controller.errorMessage != null &&
+                controller.posts.isEmpty) {
               slivers.add(SliverFillRemaining(
                 hasScrollBody: false,
                 child: _FeedErrorState(onRetry: controller.loadPosts),
@@ -106,6 +206,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 context: context,
                 posts: controller.posts,
                 onPostTap: controller.selectPost,
+                showWhoToFollow: true,
               ));
             }
           }
@@ -120,19 +221,27 @@ class _FeedScreenState extends State<FeedScreen> {
     required BuildContext context,
     required List<Post> posts,
     required ValueChanged<Post> onPostTap,
+    required bool showWhoToFollow,
   }) {
     final children = <Widget>[];
     var insertedWhoToFollow = false;
 
     for (var index = 0; index < posts.length; index++) {
-      if (index == 2) {
+      if (showWhoToFollow && index == 2) {
         children.add(const WhoToFollowSection());
         insertedWhoToFollow = true;
       }
       final post = posts[index];
       children.add(InkWell(
-        onTap: () => onPostTap(post),
-        child: ActivityPostCard(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PostStatsScreen(post: post), // Navigate to your new screen
+            ),
+          );
+        },
+         child: ActivityPostCard(
           post: post,
           onAvatarTap: () => Navigator.push(
             context,
@@ -144,7 +253,9 @@ class _FeedScreenState extends State<FeedScreen> {
       ));
     }
 
-    if (!insertedWhoToFollow) children.add(const WhoToFollowSection());
+    if (showWhoToFollow && !insertedWhoToFollow) {
+      children.add(const WhoToFollowSection());
+    }
 
     return SliverList(delegate: SliverChildListDelegate(children));
   }
@@ -205,7 +316,8 @@ class _BleConnectCard extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             ),
             onPressed: () => Navigator.push(
               context,
@@ -220,9 +332,16 @@ class _BleConnectCard extends StatelessWidget {
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
-class _MainHeader extends StatelessWidget {
+class _MainHeader extends StatefulWidget {
   final ValueChanged<int> onTabChanged;
   const _MainHeader({required this.onTabChanged});
+
+  @override
+  State<_MainHeader> createState() => _MainHeaderState();
+}
+
+class _MainHeaderState extends State<_MainHeader> {
+  bool _notificationsOn = true;
 
   @override
   Widget build(BuildContext context) {
@@ -239,22 +358,44 @@ class _MainHeader extends StatelessWidget {
                 child: Image.asset('assets/img/logo-gondolier.png'),
               ),
               Row(
-                children: const [
-                  Text(
+                children: [
+                  const Text(
                     'Home',
                     style: TextStyle(
                       color: Colors.red,
                       fontWeight: FontWeight.bold,
+                      fontSize: 22,
                     ),
                   ),
-                  SizedBox(width: 15),
-                  Icon(Icons.notifications_none, color: Colors.red),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: Icon(
+                      _notificationsOn
+                          ? Icons.notifications
+                          : Icons.notifications_off_outlined,
+                      color: Colors.red,
+                    ),
+                    onPressed: () {
+                      setState(() => _notificationsOn = !_notificationsOn);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            _notificationsOn
+                                ? 'Notifications on'
+                                : 'Notifications off',
+                          ),
+                          duration: const Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 20),
-          FilterTabs(onTabChanged: onTabChanged),
+          FilterTabs(onTabChanged: widget.onTabChanged),
         ],
       ),
     );

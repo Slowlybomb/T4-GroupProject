@@ -14,18 +14,19 @@ class WhoToFollowSection extends StatelessWidget {
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 20),
           child: Text(
-            "Who to follow",
+            'Who to follow',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
         const SizedBox(height: 15),
         SizedBox(
-          height: 160,
+          height: 175,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.only(left: 20),
             itemCount: 5,
-            itemBuilder: (context, index) => _FollowerCard(name: 'Rower ${index + 1}'),
+            itemBuilder: (context, index) =>
+                _FollowerCard(name: 'Rower ${index + 1}'),
           ),
         ),
         const SizedBox(height: 10),
@@ -34,14 +35,21 @@ class WhoToFollowSection extends StatelessWidget {
   }
 }
 
-class _FollowerCard extends StatelessWidget {
+class _FollowerCard extends StatefulWidget {
   final String name;
   const _FollowerCard({required this.name});
+
+  @override
+  State<_FollowerCard> createState() => _FollowerCardState();
+}
+
+class _FollowerCardState extends State<_FollowerCard> {
+  bool _following = false;
 
   void _openProfile(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => UserProfileScreen(name: name)),
+      MaterialPageRoute(builder: (_) => UserProfileScreen(name: widget.name)),
     );
   }
 
@@ -62,26 +70,38 @@ class _FollowerCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            GestureDetector(
-              onTap: () => _openProfile(context),
-              child: const CircleAvatar(backgroundColor: Colors.grey, radius: 25),
-            ),
+            const CircleAvatar(backgroundColor: Colors.grey, radius: 25),
             const SizedBox(height: 10),
             Text(
-              name,
+              widget.name,
               style: const TextStyle(fontWeight: FontWeight.bold),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             const Spacer(),
-            ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryRed,
-                shape: const StadiumBorder(),
-                minimumSize: const Size(double.infinity, 30),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _following = !_following),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: _following ? Colors.transparent : AppColors.primaryRed,
+                  borderRadius: BorderRadius.circular(30),
+                  border: _following
+                      ? Border.all(color: Colors.grey.shade400)
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _following ? 'Unfollow' : 'Follow',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: _following ? Colors.grey.shade600 : Colors.white,
+                  ),
+                ),
               ),
-              child: const Text("Follow", style: TextStyle(fontSize: 12)),
             ),
           ],
         ),
