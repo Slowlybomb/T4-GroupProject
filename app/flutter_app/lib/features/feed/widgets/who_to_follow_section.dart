@@ -42,23 +42,21 @@ class WhoToFollowSection extends StatelessWidget {
               style: const TextStyle(color: Colors.grey),
             ),
           ),
-        if (suggestions.isNotEmpty) ...[
-          const SizedBox(height: 15),
-          SizedBox(
-            height: 175,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(left: 20),
-              itemCount: suggestions.length,
-              itemBuilder: (context, index) {
-                final suggestion = suggestions[index];
-                return _FollowerCard(
-                  suggestion: suggestion,
-                  isFollowing: isFollowing(suggestion.id),
-                  onFollowTap: onFollowTap,
-                );
-              },
-            ),
+        const SizedBox(height: 15),
+        SizedBox(
+          height: 160,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.only(left: 20),
+            itemCount: suggestions.length,
+            itemBuilder: (context, index) {
+              final suggestion = suggestions[index];
+              return _FollowerCard(
+                suggestion: suggestion,
+                isFollowing: isFollowing(suggestion.id),
+                onFollowTap: () => onFollowTap(suggestion),
+              );
+            },
           ),
         ],
         const SizedBox(height: 10),
@@ -67,32 +65,16 @@ class WhoToFollowSection extends StatelessWidget {
   }
 }
 
-class _FollowerCard extends StatefulWidget {
+class _FollowerCard extends StatelessWidget {
   const _FollowerCard({
     required this.suggestion,
-    required this.isFollowing,
     required this.onFollowTap,
+    required this.isFollowing,
   });
 
   final FollowSuggestion suggestion;
+  final VoidCallback onFollowTap;
   final bool isFollowing;
-  final Future<bool> Function(FollowSuggestion suggestion) onFollowTap;
-
-  @override
-  State<_FollowerCard> createState() => _FollowerCardState();
-}
-
-class _FollowerCardState extends State<_FollowerCard> {
-  bool _isSubmitting = false;
-
-  void _openProfile(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => UserProfileScreen(name: widget.suggestion.headline),
-      ),
-    );
-  }
 
   Future<void> _follow() async {
     if (_isSubmitting || widget.isFollowing) {
@@ -108,71 +90,57 @@ class _FollowerCardState extends State<_FollowerCard> {
 
   @override
   Widget build(BuildContext context) {
-    final label = widget.isFollowing ? 'Following' : 'Follow';
-
-    return GestureDetector(
-      onTap: () => _openProfile(context),
-      child: Container(
-        width: 140,
-        margin: const EdgeInsets.only(right: 15),
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 5,
+    return Container(
+      width: 130,
+      margin: const EdgeInsets.only(right: 15),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5),
+        ],
+      ),
+      child: Column(
+        children: [
+          CircleAvatar(
+            backgroundColor: Colors.grey.shade200,
+            radius: 25,
+            backgroundImage: suggestion.avatarUrl == null
+                ? null
+                : NetworkImage(suggestion.avatarUrl!),
+            child: suggestion.avatarUrl == null
+                ? const Icon(Icons.person, color: Colors.grey)
+                : null,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            suggestion.headline,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            '@${suggestion.userName}',
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const Spacer(),
+          ElevatedButton(
+            onPressed: isFollowing ? null : onFollowTap,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryRed,
+              disabledBackgroundColor: Colors.grey.shade400,
+              shape: const StadiumBorder(),
+              minimumSize: const Size(double.infinity, 30),
             ),
-          ],
-        ),
-        child: Column(
-          children: [
-            const CircleAvatar(backgroundColor: Colors.grey, radius: 25),
-            const SizedBox(height: 10),
-            Text(
-              widget.suggestion.headline,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Text(
+              isFollowing ? 'Following...' : 'Follow',
+              style: const TextStyle(fontSize: 12),
             ),
-            const Spacer(),
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _follow,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: BoxDecoration(
-                  color: widget.isFollowing
-                      ? Colors.transparent
-                      : AppColors.primaryRed,
-                  borderRadius: BorderRadius.circular(30),
-                  border: widget.isFollowing
-                      ? Border.all(color: Colors.grey.shade400)
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: _isSubmitting
-                    ? const SizedBox(
-                        height: 14,
-                        width: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: widget.isFollowing
-                              ? Colors.grey.shade600
-                              : Colors.white,
-                        ),
-                      ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

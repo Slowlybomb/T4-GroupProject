@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/widgets/post_stats_row.dart';
-import '../../../core/widgets/post_user_header.dart';
+import '../../../core/widgets/post_stats_row.dart' as post_stats;
+import '../../../core/widgets/post_user_header.dart' as post_header;
 import '../domain/models/post.dart';
 
 class ActivityPostCard extends StatelessWidget {
@@ -39,7 +39,7 @@ class ActivityPostCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          PostUserHeader(
+          post_header.PostUserHeader(
             name: post.userName,
             timeAgo: post.timestamp,
             avatarUrl: post.avatarUrl,
@@ -52,7 +52,7 @@ class ActivityPostCard extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ),
-          PostStatsRow(
+          post_stats.PostStatsRow(
             distance: post.distance,
             duration: post.duration,
             avgSplit: post.avgSplit,
@@ -171,14 +171,12 @@ class _RoutePolylinePainter extends CustomPainter {
 class _PostActions extends StatelessWidget {
   const _PostActions({
     required this.likes,
-    required this.comments,
     this.onLikeTap,
     this.onCommentTap,
     this.onShareTap,
   });
 
   final int likes;
-  final int comments;
   final VoidCallback? onLikeTap;
   final VoidCallback? onCommentTap;
   final VoidCallback? onShareTap;
@@ -187,25 +185,25 @@ class _PostActions extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _ActionItem(
-          icon: Icons.favorite_border,
-          label: '$likes',
-          color: Colors.red,
+        InkWell(
           onTap: onLikeTap,
+          child: const Icon(Icons.favorite_border, color: Colors.red, size: 20),
         ),
+        const SizedBox(width: 5),
+        Text('$likes', style: const TextStyle(fontSize: 12)),
         const SizedBox(width: 15),
-        _ActionItem(
-          icon: Icons.chat_bubble_outline,
-          label: '$comments',
-          color: Colors.grey,
+        InkWell(
           onTap: onCommentTap,
+          child: const Icon(
+            Icons.chat_bubble_outline,
+            color: Colors.grey,
+            size: 20,
+          ),
         ),
         const Spacer(),
-        _ActionItem(
-          icon: Icons.share_outlined,
-          label: 'Share',
-          color: Colors.grey,
+        InkWell(
           onTap: onShareTap,
+          child: const Icon(Icons.share_outlined, color: Colors.grey, size: 20),
         ),
       ],
     );

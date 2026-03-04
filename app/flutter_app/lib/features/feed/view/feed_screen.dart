@@ -8,18 +8,12 @@ import '../widgets/activity_post_card.dart';
 import '../widgets/filter_tabs.dart';
 import '../widgets/weekly_summary_card.dart';
 import '../widgets/who_to_follow_section.dart';
-import '../../profile/view/user_profile_screen.dart';
 
-class FeedScreen extends StatefulWidget {
-  const FeedScreen({super.key, required this.onViewProgress});
+class FeedScreen extends StatelessWidget {
+  const FeedScreen({super.key, this.onViewProgress});
 
-  final VoidCallback onViewProgress;
+  final VoidCallback? onViewProgress;
 
-  @override
-  State<FeedScreen> createState() => _FeedScreenState();
-}
-
-class _FeedScreenState extends State<FeedScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -73,9 +67,6 @@ class _FeedScreenState extends State<FeedScreen> {
                 context: context,
                 controller: controller,
                 posts: controller.posts,
-                onPostTap: controller.selectPost,
-                showWhoToFollow:
-                    controller.selectedScope == FeedScope.following,
               ),
             );
           }
@@ -90,14 +81,12 @@ class _FeedScreenState extends State<FeedScreen> {
     required BuildContext context,
     required FeedController controller,
     required List<Post> posts,
-    required ValueChanged<Post> onPostTap,
-    required bool showWhoToFollow,
   }) {
     final children = <Widget>[];
     var insertedWhoToFollow = false;
 
     for (var index = 0; index < posts.length; index++) {
-      if (showWhoToFollow && index == 2) {
+      if (index == 2) {
         children.add(
           WhoToFollowSection(
             suggestions: controller.suggestions,
@@ -108,7 +97,6 @@ class _FeedScreenState extends State<FeedScreen> {
               if (!success && context.mounted) {
                 _showSnack(context, 'Unable to follow user right now.');
               }
-              return success;
             },
           ),
         );
@@ -118,27 +106,18 @@ class _FeedScreenState extends State<FeedScreen> {
       final post = posts[index];
       children.add(
         InkWell(
-          onTap: () => onPostTap(post),
+          onTap: () => controller.selectPost(post),
           child: ActivityPostCard(
             post: post,
-            onAvatarTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => UserProfileScreen(name: post.userName),
-              ),
-            ),
             onLikeTap: () async {
               final success = await controller.likePost(post);
               if (!success && context.mounted) {
                 _showSnack(context, 'Unable to like this activity right now.');
               }
             },
-            onCommentTap: () {
-              _showSnack(context, 'Comments are coming soon.');
-            },
-            onShareTap: () {
-              _showSnack(context, 'Share is coming soon.');
-            },
+            onCommentTap: () =>
+                _showSnack(context, 'Comments are coming soon.'),
+            onShareTap: () => _showSnack(context, 'Share is coming soon.'),
           ),
         ),
       );
@@ -155,7 +134,6 @@ class _FeedScreenState extends State<FeedScreen> {
             if (!success && context.mounted) {
               _showSnack(context, 'Unable to follow user right now.');
             }
-            return success;
           },
         ),
       );
@@ -164,29 +142,21 @@ class _FeedScreenState extends State<FeedScreen> {
     return SliverList(delegate: SliverChildListDelegate(children));
   }
 
-  void _showSnack(BuildContext context, String message) {
+  static void _showSnack(BuildContext context, String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
-// ─── Header ───────────────────────────────────────────────────────────────────
-class _MainHeader extends StatefulWidget {
+class _MainHeader extends StatelessWidget {
   const _MainHeader({
     required this.selectedScope,
     required this.onScopeSelected,
   });
 
   final FeedScope selectedScope;
-  final ValueChanged<FeedScope> onScopeSelected;
-
-  @override
-  State<_MainHeader> createState() => _MainHeaderState();
-}
-
-class _MainHeaderState extends State<_MainHeader> {
-  bool _notificationsOn = true;
+  final Future<void> Function(FeedScope scope) onScopeSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -203,46 +173,24 @@ class _MainHeaderState extends State<_MainHeader> {
                 child: Image.asset('assets/img/logo-gondolier.png'),
               ),
               Row(
-                children: [
-                  const Text(
+                children: const [
+                  Text(
                     'Home',
                     style: TextStyle(
                       color: Colors.red,
                       fontWeight: FontWeight.bold,
-                      fontSize: 22,
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    icon: Icon(
-                      _notificationsOn
-                          ? Icons.notifications
-                          : Icons.notifications_off_outlined,
-                      color: Colors.red,
-                    ),
-                    onPressed: () {
-                      setState(() => _notificationsOn = !_notificationsOn);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            _notificationsOn
-                                ? 'Notifications on'
-                                : 'Notifications off',
-                          ),
-                          duration: const Duration(seconds: 2),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                  ),
+                  SizedBox(width: 15),
+                  Icon(Icons.notifications_none, color: Colors.red),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 20),
           FilterTabs(
-            selectedScope: widget.selectedScope,
-            onScopeSelected: widget.onScopeSelected,
+            selectedScope: selectedScope,
+            onScopeSelected: (scope) => onScopeSelected(scope),
           ),
         ],
       ),

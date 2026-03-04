@@ -200,19 +200,16 @@ class _BleSessionScreenState extends State<BleSessionScreen> {
 
     for (int attempt = 1; attempt <= 3; attempt++) {
       try {
-        if (!mounted) return;
         setState(() => _status = 'Connecting… ($attempt/3)');
         await widget.device.connect(
           timeout: const Duration(seconds: 10),
           autoConnect: false,
         );
         try { await widget.device.requestMtu(512); } catch (_) {}
-        if (!mounted) return;
         setState(() { _status = 'Discovering services…'; _connected = true; });
         break;
       } catch (e) {
         if (attempt == 3) {
-          if (!mounted) return;
           setState(() => _status = 'Failed to connect: $e');
           return;
         }
@@ -224,7 +221,6 @@ class _BleSessionScreenState extends State<BleSessionScreen> {
 
     try {
       final services = await widget.device.discoverServices();
-      if (!mounted) return;
       for (final svc in services) {
         if (svc.serviceUuid == Guid(kServiceUUID)) {
           for (final c in svc.characteristics) {
@@ -240,11 +236,9 @@ class _BleSessionScreenState extends State<BleSessionScreen> {
       }
 
       await _dataChar!.setNotifyValue(true);
-      if (!mounted) return;
       _dataSub = _dataChar!.lastValueStream.listen(_onData);
       setState(() => _status = 'Ready — tap "Get Session" to download');
     } catch (e) {
-      if (!mounted) return;
       setState(() => _status = 'Service discovery error: $e');
     }
   }
@@ -294,7 +288,7 @@ class _BleSessionScreenState extends State<BleSessionScreen> {
   void dispose() {
     _dataSub?.cancel();
     _connSub?.cancel();
-    unawaited(widget.device.disconnect());
+    widget.device.disconnect();
     super.dispose();
   }
 

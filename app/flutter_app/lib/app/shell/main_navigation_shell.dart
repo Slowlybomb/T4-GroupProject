@@ -91,7 +91,7 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
               BottomNavigationBarItem(
                 icon: Icon(Icons.person_outline),
                 activeIcon: Icon(Icons.person),
-                label: 'Profile',
+                label: 'Stats',
               ),
             ],
           ),
