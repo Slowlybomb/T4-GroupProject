@@ -194,6 +194,74 @@ Unit testing on-device is limited, but key techniques used:
 - Radio transmission: add a radio transmission system for communication with a device held by the coach so they can get the same data live  
 - GPS: integrate GPS for positional accuracy and speed tracking
 
+**Display**
+
+1. Technical Specification
+- 240x320 pixel display screen with touchscreen capabilities.
+- Open source graphics library provided by adafruit.
+- 4 white-LED backlight providing brightness with individual pixel RGB color support.
+- fastSPI communication standard used for a fast and responsive UI.
+- screen UI and logos designed in Lopaka.app.
+- screen development done on wokwi.com.
+
+2. Design Choices
+
+Multiple factors went into the decision for the user interface layout. At the top of the list, visual clarity was the number one priority.
+
+The embedded electronics use the screen in a horizontal layout, with the longest part of the screen being at the top and bottom. This provided us with a large canvas to give the split time and elapsed time equal room, while giving away most of the screen realestate to the strokes per minute counter.
+
+Although capable of displaying colors, the UI is primarily using black and white to display the elements. This was done to ensure proper visibility while working on a rowboat, as adding color to the text or the numbers would make it harder to read.
+
+Even though the screen is capable of touchscreen funciontality, we have decided against using it, since wrong inputs could occur due to the nature of the wet environment that the product would be in.
+
+The initial screen layout consisted of a top bar, for displaying the time, and equal-space segments for the strokes per minute, split and elapsed time.
+
+<p align="center">
+  <img src="display_1.png" alt="Initial Display UI Prototype" width="600"/>
+</p>
+After review and feedback, this screen layout proved suboptimal. The most important piece of information on the screen for a rower will be the strokes per minute. Even though it is displayed as the biggest element, it still might not be clear enough for the number to be glanced at from a distance, or if the screen gets wet. Additionally, the font chosen proved not legible enough, especially since the same font was used for the text and the numbers. This led to many rough pixelated edges, making it harder to see the information needed.
+
+The final UI screen builds upon the feedback received in all aspects.
+- The "S/M" label was made smaller and moved to the far side to the right of the screen, while the counter was made almost twice as big.
+- The font for the numbers was changed to a much more simplistic and sleeker font, allowing for easy reading of the numbers while under stress.
+- The split time and elapsed time have been moved to their own section and are much smaller since, while this information is good to have, it is not the main priority of the rower.
+- Once our communication protocol was chosen, a wifi logo was added to the top bar of the display.
+
+<p align="center">
+  <img src="display_2.png" alt="Final Iteration of Display UI" width="600"/>
+</p>
+
+
+3. Tools, Functions and Workflow
+
+When the final rendition of the UI was settled, work began on creating update functions for each element. The focus was on providing update functions to change the main UI elements pertaining to rowing, and the option to change all of these with a single function call. More functions were added in the final design as to change the color of the Wifi symbol to show when data transfer is ready, and for changing the current time in the top left.
+
+- ``void show_ui(tft)`` initial set up of the UI and their elements, like wifi, battery, timer, strokes, split and time.
+- ``void splashscreen(tft)`` displays the logo at startup.
+- ``void update_timer(tft, time)`` updates the total time elapsed screen element.
+- ``void update_split(tft, split)`` updates the split time screen element.
+- ``void update_strokes(tft, strokes)`` updates the strokes per minute screen element.
+- ``void update_screen(tft, strokes, split, time)`` combines the 3 functions above into 1 for easily updating the main UI elements with one command.
+
+Physical access to the board was limited, so to test out the UI, the code, and to ensure everything displayed properly, an esp32 emulator website [wokwi.com](https://wokwi.com/) was used. This website allowed us to work in parallel and then sync our work together using git.
+
+<p align="center">
+  <img src="display_3.png" alt="Final Iteration of Display UI" width="700"/>
+</p>
+
+4. UI and Logo
+
+[lopaka.app](https://lopaka.app/) is a webapp enabling an easy and straightforward process to designing screen interfaces for embedded electronics. Using this website, we were able to draft and iterate upon multiple screen layouts.
+
+The website has a feature that allows for image uploads for creating custom logos. In reality, this feature is built upon the adafruit graphics library and image reader library, meaning that while helpful, the logo import and UI design could have been done without reliance on this software.
+
+<p align="center">
+  <img src="display_4.png" alt="Final Iteration of Display UI" width="700"/>
+</p>
+
+The final aspect of UI development was the splashscreen greeter. Once the logos were finished, the final choice for which logo to use came down to the two that can be seen above. We decided on going the second logo, mentioning how we might benefit from a simpler and sleeker logo choice, especially when displayed on a small screen.
+
+
 **Appendix A \- File map and responsibilities**
 
 - `embedded-code.ino`: application entrypoint, state machine  

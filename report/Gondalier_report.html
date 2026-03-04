@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<title>Gondalier_report.html</title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+
+</head>
+
+<body>
+
+<script>
+MathJax = { tex: { inlineMath: [['$','$']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+<h1>Gondolier</h1>
+<h2>An open source rowing monitor</h2>
+<p><strong>Preface</strong></p>
+<p>This document explains Gondolier's goals, design, components, and the rationale behind major decisions. It is intended for engineers who want to understand, maintain, or extend the rowing monitor hardware and firmware.</p>
+<p><strong>Summary</strong></p>
+<p>Gondolier is a compact on-boat rowing monitor that detects rowing strokes in real time using an IMU and a TensorFlow Lite model. It displays metrics (stroke rate, split time, session timer) and syncs session data to a phone app over Bluetooth Low Energy (BLE) for further analytics and social sharing.</p>
+<p><strong>History and Motivation</strong></p>
+<p>Rowers and coaches benefit from immediate, accurate stroke detection and per-stroke metrics. Existing solutions are bulky, old and expensive. Gondolier provides a lightweight, dedicated device that sits on the rigging, giving rowers immediate feedback and long-term session sync.</p>
+<p><strong>Context and Goals</strong></p>
+<ul>
+<li>Real-time stroke detection with low latency.</li>
+<li>Long battery life and robust behaviour on a small microcontroller.</li>
+<li>Simple, readable display for use while rowing.</li>
+<li>Easy transfer of session data to a phone for analysis and sharing.</li>
+<li>Open-source hardware and firmware for reproducibility.</li>
+</ul>
+<p><strong>System Overview</strong></p>
+<p>At a high level Gondolier consists of:</p>
+<ul>
+<li>A small microcontroller (ESP32-S3-MINI-1) running firmware written as an Arduino/ESP project; main firmware is in <code>embedded-code.ino</code>.</li>
+<li>An IMU (QMI8658) delivering accelerometer and gyroscope data, abstracted by <code>accelerometer.h</code>.</li>
+<li>A 240×320 ILI9341 TFT display driven via <code>Display.h</code>.</li>
+<li>An on-device ML model (<code>model.tflite</code> and supporting headers <code>model.h</code>, <code>model_data.h</code>) that classifies input windows into stroke / non-stroke.</li>
+<li>BLE transfer routines in <code>networking.h</code> to send compressed session data to a phone app.</li>
+</ul>
+<p><strong>Architecture and Components</strong></p>
+<p>This section describes components and their responsibilities, and how they interact.</p>
+<ol>
+<li>Hardware</li>
+<li>MCU: ESP32-S3-MINI-1 - chosen for its dual-core RISC-V CPU, integrated WiFi and BLE, and sufficient flash/ram to host a small TFLite model.</li>
+<li>IMU: QMI8658 - a 6-axis sensor (3-axis accel, 3-axis gyro). 125Hz sampling provides enough resolution to detect rowing strokes while balancing power consumption.</li>
+<li>Display: 240×320 TFT (ILI9341) - low-power, readable in sunlight with SPI interface.</li>
+<li>
+<p>Power: LiPo battery + regulator; the firmware supports sleep modes between strokes to conserve power.</p>
+</li>
+<li>
+<p>Firmware (high level)</p>
+</li>
+</ol>
+<p>The firmware organizes functionality into modules:</p>
+<ul>
+<li><code>accelerometer.h</code> - handles IMU initialization, configuration and provides a ring buffer of recent acceleration samples.</li>
+<li><code>model.h</code> / <code>model_data.h</code> - contain the TensorFlow Lite Micro model and inference integration code.</li>
+<li><code>Display.h</code> - UI primitives for the on-boat display: main screen, metric updates, and minimal menus.</li>
+<li><code>networking.h</code> - BLE advertisement, GATT services, and a simple protocol to upload sessions to the phone app.</li>
+<li>
+<p><code>embedded-code.ino</code> - application entrypoint, task orchestration, and state machine for session lifecycle.</p>
+</li>
+<li>
+<p>Machine learning model
+   The stroke detection model is trained offline on labeled IMU windows and exported to TFLite (<code>model.tflite</code>). At runtime we run a fixed-length sliding window of accelerometer magnitude through the TFLite Micro interpreter. The model outputs a probability (stroke / not-stroke) and the firmware applies a detection algorithm (threshold + debounce) to produce discrete stroke events.</p>
+</li>
+</ul>
+<p><strong>Electronic Assembly:</strong></p>
+<p>The electronic assembly was straight forward, as this is only a prototype, we used dev boards where possible. For the ESP32, I used a clone of the adafruit feather TFT with an integrated accelerometer; the accelerometer communicates with the MCU using I2C. The screen was a cheap TFT breakout board which was connected using the serial peripheral interface (SPI) for communication, the entire assembly was done using a perforated prototyping board. A 3.3v compatible SD card module was connected using SPI as well and so unique “chip select” pins were assigned to each SPI module. Buttons were added for control and were wired for pullup resistors. Debouncing capacitors were used to smooth button, accelerometer and voltage across the full circuit, a CP2104 Li-Po battery management system board was connected with a battery for the duration of data collection but this was removed after for safety.</p>
+<p>Simplified Schematic of the rowing tracker
+<img src="schematic.png" alt="Simplified schematic of the rowing tracker" width="600"/></p>
+<p>Breakout image of the electronics:</p>
+<p>Image of the full electronics stack:
+<strong>Design Decisions and Trade-offs</strong></p>
+<ul>
+<li>Model size and sampling rate: We limit the input window and sampling frequency to keep RAM usage and CPU cost low. This restricts model complexity but fits TFLite Micro on the ESP32-S3.</li>
+<li>BLE for sync: BLE provides easy phone connectivity and low power, but imposes throughput constraints which we address by batching and compressing session data.</li>
+<li>Display choice: SPI TFT gives readability and low pin count. It is less power-efficient than e-paper but allows real-time numeric updates.</li>
+</ul>
+<p><strong>Obtaining Training Data</strong></p>
+<ul>
+<li>Data Collection: The initial step of the project was data collection, before we could write the main firmware or prepare the model, we needed to collect a large amount of data, this was a lengthy process. We tested data collection and data processing in a plethora of different ways. World rowing champion, Sally Cudmore, kindly took our rowing tracker on to her boat so we could collect the necessary data. To try and make the process as quick as possible, we collected data at 800hz, filling the integrated buffer on the accelerometer and polling the data as frequently as possible, we collected both accelerometer and gyroscope data in case we would want to use both in the final model. We also ensured the device was rigidly connected to the boat to prevent noise from it bouncing around. While on the water, per our request, Sally did a variety of different strokes. This included strokes at different speeds and stroke rates, half strokes, low power and high power strokes. We collected a total of 2 hours of rowing data, roughly 800 data points.</li>
+<li>Data processing: At first, we used matplotlib to plot all three axes of the acceleration and gyroscope. This informed us very quickly that the rotational data was unnecessary so we immediately removed it. Looking at the acceleration data, the x axis was just complete noise, the y axis showed a small semblance of rowing strokes and the z axis showed clear rowing stroke, this made a lot of sense, the accelerometer was mounted in a way that its z axis was pointing in the direction of the boats motion, it was tilted up slights so the screen was visible to Sally and so some of the motion was also present in the y axis, the x axis was positioned perpendicular to the motion of the boat so the only acceleration in that axis was the wobbling of the boat due to waves and instability.</li>
+</ul>
+<p>Unprocessed z axis accelerometer data
+<img src="graph1.png" alt="Unprocessed z axis accelerometer data" width="700"/>
+Because we knew that rowers would want to tilt the device at different angles so they could view the screen in boats with different designs, we had to process the data in a way that would be totally agnostic to device orientation. To achieve this, we used simple trigonometry. Obtaining the magnitude of the Y and Z axes, where the data is present, turned it into a vector of acceleration that would not change depending on orientation.</p>
+<p>$$
+\vec{v} = \sqrt{Y^2 + Z^2}
+$$</p>
+<p>As is clearly visible in the image below, the noise from the accelerometer is very high, despite having a clear signal, it is very messy data, the next step was to pass it through a low pass filter to cut out the high frequency noise, a simple 100 sample window rolling average was used</p>
+<p>$$
+\bar{m}[n] = \frac{1}{50} \sum_{k=0}^{49} \sqrt{Y[n-k]^2 + Z[n-k]^2}
+$$</p>
+<p>Noise signal before rolling average
+<img src="graph3.png" alt="Noise signal before rolling average" width="700"/>
+Blue line inside orange shows the processed signal compared to orange noisy signal
+<img src="graph4.png" alt="Blue line inside orange shows the processed signal compared to orange noisy signal" width="700"/>
+Lastly to remove gravitation anomalies, another rolling average was done but with a sample window size of 500, this acted as a high pass filter allowing the stroke data to pass through but not changes in the tilt of the boat</p>
+<p>$$
+\bar{m}[n] = \frac{1}{500} \sum_{i=0}^{499} \frac{1}{50} \sum_{k=0}^{49} \sqrt{y[n-i-k]^2 + z[n-i-k]^2}
+$$</p>
+<p>30 seconds of processed data showing 9 strokes
+<img src="graph5.png" alt="30 seconds of processed data showing 9 strokes" width="700"/></p>
+<ul>
+<li>Creating stroke and non stroke training windows: Now that the data is cleaned and processed we had to decide how to best package the data to feed into the neural network, we tried a variety of methods for this, where we struggled was finding non stroke data, typically once on the water, Sally will row stroke after stroke until she is done with little rest time so to get non stroke data is very difficult, i created a python script that looked for peaks over a certain height, it labelled these peaks and then created windows across the whole dataset, overlapping with an offset of 1 second, the % of the stroke in each window was labelled based on where in the stroke the spike occurred and then a graph of each stroke was presented by the code to be manually approved or rejected, all windows that had less than 70% of a stroke as labelled as not a stroke. In the end, 400 windows were given to the model to train on, 300 stroke windows and 100 non stroke windows. This was a smaller dataset than we had wanted to work on but it still functioned well. This was the 8th different way we tried to window the data, it was difficult and involved a lot of trial and error and any attempt to use AI on this task threw us awry as this has never been attempted before publicly so there is no data online</li>
+</ul>
+<p>Manual review of stroke data
+<img src="graph6.png" alt="Manual review of stroke data" width="700"/>
+  Automated review of stroke data of entire 40 rowing session
+<img src="graph7.png" alt="Automated review of stroke data of entire 40 rowing session" width="700"/></p>
+<p><strong>Data Flow and Algorithms</strong></p>
+<ol>
+<li>
+<p>Acquisition: The IMU runs at a sampling frequency of 125Hz. The accelerometer vectors are read into a circular buffer.</p>
+</li>
+<li>
+<p>Processing: in order to negate the issue of device orientation in the boat, the magnitude of the y and z axis data is taken, this makes the stroke detection orientation agnostic, this is put through a further high pass filter to remove gravity anomalies and a low pass filter to remove noise from the sensor</p>
+</li>
+<li>
+<p>Windowing: Every inference step takes the recent 850 samples after processing. The data is then normalised using a moving scale and then put passed to the model.</p>
+</li>
+<li>
+<p>Inference: The TFLite Micro interpreter (<code>model.h</code>) runs the model on the input window and returns a probability for a stroke. The firmware compares the probability to a threshold and uses a small state machine with hysteresis to avoid false positives from boat motion.</p>
+</li>
+<li>
+<p>Event generation</p>
+</li>
+</ol>
+<p>Confirmed strokes are timestamped and added to the session buffer. Stroke rate (spm) and split time are computed using recent stroke intervals.</p>
+<p><strong>Firmware Structure and Files</strong></p>
+<ul>
+<li><code>embedded-code.ino</code> - Main loop and mode management (idle, rowing, paused, sync). Handles button input and session start/stop.</li>
+<li><code>accelerometer.h</code> - IMU init, sample acquisition, buffer API: <code>void imu_init(); bool imu_has_samples(); void imu_pop_sample(Sample *s);</code></li>
+<li><code>Display.h</code> - APIs: <code>display_init()</code>, <code>display_mainScreenUpdate(spm, split, elapsed)</code>, <code>display_drawMessage()</code>.</li>
+<li><code>networking.h</code> - BLE advertise, GATT service. Uses a small framing protocol: session metadata, then compressed sample/stroke records.</li>
+<li><code>model.h</code> / <code>model_data.h</code> / <code>model.tflite</code> - model binary integrated as const array plus code to call interpreter and return detection probability.</li>
+</ul>
+<p>Build, Flashing, and Development</p>
+<p>The project is structured as an Arduino-style sketch with <code>embedded-code.ino</code> at the root and headers in the same folder. Two common ways to build and flash:</p>
+<ul>
+<li>Arduino IDE / Arduino CLI</li>
+<li>Install board support for <code>esp32</code> (Espressif) and select ESP32-S3 board.</li>
+<li>Open <code>embedded-code.ino</code> and upload.</li>
+<li>PlatformIO</li>
+<li>Create a <code>platformio.ini</code> with the <code>espressif32</code> platform and <code>board = esp32-s3-devkit</code> (or similar). Use the <code>upload</code> and <code>monitor</code> targets.</li>
+</ul>
+<p><strong>Development Tips</strong></p>
+<ul>
+<li>Enable <code>#define DEBUG_SERIAL</code> to get verbose logs of sensor values, inference probabilities, and BLE state.</li>
+<li>When tuning the model threshold, log <code>probability</code> and <code>timestamp</code> pairs to serial and replay them offline.</li>
+</ul>
+<p><strong>Testing and Evaluation</strong></p>
+<p>Unit testing on-device is limited, but key techniques used:</p>
+<ul>
+<li>Serial logging: capture IMU streams and model outputs for offline validation and visualization.</li>
+<li>Cross-validation: model trained with k-folds and tested on held-out boat types.</li>
+<li>On-device A/B: compare timestamps produced by the model with timestamps recorded by a coach and compute precision.</li>
+</ul>
+<p><strong>Performance and Resource Usage</strong></p>
+<ul>
+<li>Model memory: The memory management proved a difficult task, with 360Kb of DRAM and 8MB of PSRAM we were extremely limited. Where possible, we removed things from ram and as much as possible tried to keep the larger items in PSRAM bypassing DRAM altogether when accessing it. The model alone took up nearly 1.2MB of RAM</li>
+<li>CPU load: Inference is invoked on a background task at a sliding-window cadence. CPU usage is modest.</li>
+<li>Power: the IMU’s internal buffer is used so that we only need to poll data from its registers every few milliseconds instead of constantly, this helps to reduce power usage as the i2c busses are kept mostly quiet. The display is refreshed at a typical rate of 1Hz when there is no new data to send, this reduces power consumption</li>
+</ul>
+<p><strong>Security, Privacy, and Safety</strong></p>
+<ul>
+<li>BLE pairing: Use bonding and minimal authentication in <code>networking.h</code> to avoid accidental data exposure.</li>
+<li>Data retention: Session data stored on-device is limited in size, statistics calculated on device are not stored as this can be done quickly on the phone or the backend server</li>
+<li>Physical mounting: The device is intended to be mounted securely; firmware checks for accelerometer saturation and warns on improbable data.</li>
+</ul>
+<p><strong>Display</strong></p>
+<ol>
+<li>Technical Specification</li>
+<li>240x320 pixel display screen with touchscreen capabilities.</li>
+<li>Open source graphics library provided by adafruit.</li>
+<li>4 white-LED backlight providing brightness with individual pixel RGB color support.</li>
+<li>
+<p>fastSPI communication standard used for a fast and responsive UI.</p>
+</li>
+<li>
+<p>Design Workflow</p>
+</li>
+</ol>
+<p>Multiple factors went into the decision for the user interface layout. At the top of the list, visual clarity was the number one priority.</p>
+<p>The embedded electronics use the screen in a horizontal layout, with the longest part of the screen being at the top and bottom. This provided us with a large canvas to give the split time and elapsed time equal room, while giving away most of the screen realestate to the strokes per minute counter.</p>
+<p>The initial screen layout consisted of a top bar, for displaying the time, and equal-space segments for the strokes per minute, split and elapsed time.</p>
+<p><img src="display_1.png" alt="Manual review of stroke data" width="700"/></p>
+<p><strong>Future Work and Open Questions</strong></p>
+<ul>
+<li>Model improvements: explore multi-channel inputs (accel + gyro) or transformer-lite architectures to improve precision.</li>
+<li>Energy optimization: move more processing into the IMU and avail of its movement detection features</li>
+<li>Extended telemetry: add ANT+/NMEA compatibility for integration with existing rowing telemetry ecosystems.</li>
+<li>Radio transmission: add a radio transmission system for communication with a device held by the coach so they can get the same data live</li>
+<li>GPS: integrate GPS for positional accuracy and speed tracking</li>
+</ul>
+<p><strong>Appendix A - File map and responsibilities</strong></p>
+<ul>
+<li><code>embedded-code.ino</code>: application entrypoint, state machine</li>
+<li><code>accelerometer.h</code>: IMU driver and buffering</li>
+<li><code>Display.h</code>: screen drawing and UI</li>
+<li><code>networking.h</code>: BLE services and sync protocol</li>
+<li><code>model.h</code>, <code>model_data.h</code>, <code>model.tflite</code>: model binary and inference glue</li>
+<li><code>model.h</code> contains wrapper functions: <code>void model_init(); float model_infer(float *input);</code></li>
+</ul>
+<p><strong>Appendix B - How stroke detection works (algorithm)</strong></p>
+<ol>
+<li>Preprocess samples: compute magnitude \= sqrt(ax^2 + ay^2 + az^2) and subtract a rolling mean to remove gravity.</li>
+<li>Form windows of 850 samples and normalize each window.</li>
+<li>Call TFLite Micro to get stroke probability p.</li>
+<li>If p &gt; threshold and not in the refractory window, store stroke event.</li>
+</ol>
+<p><strong>Appendix C - Contributors and references</strong></p>
+<p>Contributors:</p>
+<ul>
+<li>Hugo Guenebaut - Embedded systems lead</li>
+<li>Emin Aksoy - Machine learning engineer</li>
+<li>Nixie - Embedded UI designer</li>
+<li>
+<h2>Mark - Communications and radio engineer</h2>
+</li>
+</ul>
+<p>References:</p>
+<ul>
+<li>TensorFlow Lite Micro documentation - <a href="https://www.tensorflow.org/lite/micro">https://www.tensorflow.org/lite/micro</a></li>
+<li>ESP32-S3 datasheet - <a href="https://documentation.espressif.com/esp32-s3_datasheet_en.pdf">https://documentation.espressif.com/esp32-s3_datasheet_en.pdf</a></li>
+<li>QMI8658 datasheet - <a href="https://qstcorp.com/upload/pdf/202202/QMI8658C%20datasheet%20rev%200.9.pdf">https://qstcorp.com/upload/pdf/202202/QMI8658C%20datasheet%20rev%200.9.pdf</a></li>
+<li>ILI9431 datasheet - <a href="https://cdn-shop.adafruit.com/datasheets/ILI9341.pdf">https://cdn-shop.adafruit.com/datasheets/ILI9341.pdf</a></li>
+</ul>
+</body>
+</html>
