@@ -2,7 +2,7 @@
 An Open Source Rowing Monitor
 #### Group 4
 
-![test](images/gondolierLogo.png)
+![Gondolier Logo](images/gondolierLogo.png)
 
 #### Group Members
 - Hugo Guenebaut

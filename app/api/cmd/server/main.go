@@ -559,13 +559,19 @@ func registerRoutes(
 	}
 
 	// Public health endpoint for uptime checks (no auth required).
+	// Expose both "/" and "/health" and support HEAD probes so common
+	// platform health checkers work without extra configuration.
+	r.GET("/", healthHandler)
+	r.HEAD("/", healthHandler)
 	// https://t4-groupproject.onrender.com/health
 	r.GET("/health", healthHandler)
+	r.HEAD("/health", healthHandler)
 
 	api := r.Group("/api/v1")
 	{
 		// Health stays public so uptime checks do not need a JWT.
 		api.GET("/health", healthHandler)
+		api.HEAD("/health", healthHandler)
 
 		activities := api.Group("/activities")
 		// Everything under /activities is protected by JWT middleware.
