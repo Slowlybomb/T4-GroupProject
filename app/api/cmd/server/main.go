@@ -51,6 +51,33 @@ type Activity struct {
 	CreatedAt           time.Time       `json:"created_at"`
 }
 
+type FeedScope string
+
+const (
+	feedScopeFollowing FeedScope = "following"
+	feedScopeGlobal    FeedScope = "global"
+	feedScopeFriends   FeedScope = "friends"
+)
+
+type FollowSuggestion struct {
+	ID                 string     `json:"id"`
+	Username           string     `json:"username"`
+	DisplayName        *string    `json:"display_name,omitempty"`
+	AvatarURL          *string    `json:"avatar_url,omitempty"`
+	CreatedAt          time.Time  `json:"created_at"`
+	LastPublicActivity *time.Time `json:"last_public_activity,omitempty"`
+}
+
+type MetricsSummary struct {
+	From                 time.Time `json:"from"`
+	To                   time.Time `json:"to"`
+	TotalWorkouts        int       `json:"total_workouts"`
+	TotalDistanceM       float64   `json:"total_distance_m"`
+	TotalDurationSeconds int64     `json:"total_duration_seconds"`
+	AvgSplit500MSeconds  *int32    `json:"avg_split_500m_seconds,omitempty"`
+	AvgStrokeSPM         *float32  `json:"avg_stroke_spm,omitempty"`
+}
+
 // Keep request payload separate so clients cannot set server-managed fields (id, user_id, likes, comments, created_at).
 type CreateActivityRequest struct {
 	// We accept nullable fields to match database columns and avoid inventing defaults in API code.
@@ -104,10 +131,14 @@ type authConfig struct {
 }
 
 type activityService interface {
-	list(ctx context.Context, userID string) ([]Activity, error)
+	list(ctx context.Context, userID string, scope FeedScope) ([]Activity, error)
 	create(ctx context.Context, userID string, req CreateActivityRequest) (Activity, error)
 	get(ctx context.Context, userID, activityID string) (Activity, bool, error)
 	like(ctx context.Context, userID, activityID string) (Activity, bool, error)
+	follow(ctx context.Context, userID, targetUserID string) (bool, error)
+	unfollow(ctx context.Context, userID, targetUserID string) (bool, error)
+	listFollowSuggestions(ctx context.Context, userID string, limit int) ([]FollowSuggestion, error)
+	metricsSummary(ctx context.Context, userID string, from, to time.Time) (MetricsSummary, error)
 }
 
 type storageSigner interface {
@@ -125,6 +156,9 @@ const (
 	defaultSignedURLExpirySeconds = 600
 	minSignedURLExpirySeconds     = 60
 	maxSignedURLExpirySeconds     = 3600
+	defaultSuggestionsLimit       = 5
+	minSuggestionsLimit           = 1
+	maxSuggestionsLimit           = 20
 
 	wsChannelFeed          = "feed"
 	wsChannelStatus        = "status"
@@ -545,7 +579,13 @@ func registerRoutes(
 				return
 			}
 
-			activities, err := store.list(c.Request.Context(), userID)
+			scope, ok := parseFeedScope(c.Query("scope"))
+			if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "scope must be one of: following, global, friends"})
+				return
+			}
+
+			activities, err := store.list(c.Request.Context(), userID, scope)
 			if err != nil {
 				log.Printf("list activities failed: %v", err)
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
@@ -668,6 +708,139 @@ func registerRoutes(
 			}
 
 			c.JSON(http.StatusOK, a)
+		})
+
+		follows := api.Group("/follows")
+		follows.Use(authMiddleware)
+
+		follows.GET("/suggestions", func(c *gin.Context) {
+			userID, ok := authUserID(c)
+			if !ok {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authenticated user"})
+				return
+			}
+
+			limit, ok := parseSuggestionsLimit(c.Query("limit"))
+			if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "limit must be a positive integer"})
+				return
+			}
+
+			suggestions, err := store.listFollowSuggestions(c.Request.Context(), userID, limit)
+			if err != nil {
+				log.Printf("list follow suggestions failed: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"items": suggestions})
+		})
+
+		follows.PUT("/:user_id", func(c *gin.Context) {
+			targetUserID, ok := parseUUID(c.Param("user_id"))
+			if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "user_id must be a UUID"})
+				return
+			}
+
+			userID, ok := authUserID(c)
+			if !ok {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authenticated user"})
+				return
+			}
+
+			if userID == targetUserID {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "cannot follow yourself"})
+				return
+			}
+
+			found, err := store.follow(c.Request.Context(), userID, targetUserID)
+			if err != nil {
+				log.Printf("follow user failed: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+				return
+			}
+			if !found {
+				c.JSON(http.StatusNotFound, gin.H{"error": "target user not found"})
+				return
+			}
+
+			c.Status(http.StatusNoContent)
+		})
+
+		follows.DELETE("/:user_id", func(c *gin.Context) {
+			targetUserID, ok := parseUUID(c.Param("user_id"))
+			if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "user_id must be a UUID"})
+				return
+			}
+
+			userID, ok := authUserID(c)
+			if !ok {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authenticated user"})
+				return
+			}
+
+			if userID == targetUserID {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "cannot unfollow yourself"})
+				return
+			}
+
+			found, err := store.unfollow(c.Request.Context(), userID, targetUserID)
+			if err != nil {
+				log.Printf("unfollow user failed: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+				return
+			}
+			if !found {
+				c.JSON(http.StatusNotFound, gin.H{"error": "target user not found"})
+				return
+			}
+
+			c.Status(http.StatusNoContent)
+		})
+
+		metrics := api.Group("/metrics")
+		metrics.Use(authMiddleware)
+		metrics.GET("/summary", func(c *gin.Context) {
+			userID, ok := authUserID(c)
+			if !ok {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authenticated user"})
+				return
+			}
+
+			fromRaw := strings.TrimSpace(c.Query("from"))
+			toRaw := strings.TrimSpace(c.Query("to"))
+			if fromRaw == "" || toRaw == "" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "from and to are required RFC3339 timestamps"})
+				return
+			}
+
+			from, err := time.Parse(time.RFC3339, fromRaw)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "from must be a valid RFC3339 timestamp"})
+				return
+			}
+
+			to, err := time.Parse(time.RFC3339, toRaw)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "to must be a valid RFC3339 timestamp"})
+				return
+			}
+
+			if from.After(to) {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "from must be less than or equal to to"})
+				return
+			}
+
+			summary, err := store.metricsSummary(c.Request.Context(), userID, from.UTC(), to.UTC())
+			if err != nil {
+				log.Printf("metrics summary failed: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+				return
+			}
+
+			c.JSON(http.StatusOK, summary)
 		})
 
 		files := api.Group("/files")
@@ -1491,7 +1664,7 @@ func asFloat64(raw any) (float64, bool) {
 	}
 }
 
-func parseActivityID(raw string) (string, bool) {
+func parseUUID(raw string) (string, bool) {
 	// Cheap UUID syntax check for route params without extra dependencies.
 	id := strings.TrimSpace(raw)
 	if len(id) != 36 {
@@ -1513,6 +1686,45 @@ func parseActivityID(raw string) (string, bool) {
 	}
 
 	return strings.ToLower(id), true
+}
+
+func parseActivityID(raw string) (string, bool) {
+	return parseUUID(raw)
+}
+
+func parseFeedScope(raw string) (FeedScope, bool) {
+	scope := strings.ToLower(strings.TrimSpace(raw))
+	switch scope {
+	case "", string(feedScopeFollowing):
+		return feedScopeFollowing, true
+	case string(feedScopeGlobal):
+		return feedScopeGlobal, true
+	case string(feedScopeFriends):
+		return feedScopeFriends, true
+	default:
+		return "", false
+	}
+}
+
+func parseSuggestionsLimit(raw string) (int, bool) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return defaultSuggestionsLimit, true
+	}
+
+	value, err := strconv.Atoi(trimmed)
+	if err != nil || value <= 0 {
+		return 0, false
+	}
+
+	if value < minSuggestionsLimit {
+		value = minSuggestionsLimit
+	}
+	if value > maxSuggestionsLimit {
+		value = maxSuggestionsLimit
+	}
+
+	return value, true
 }
 
 // isHex returns true when a byte is [0-9a-fA-F].
@@ -1583,13 +1795,80 @@ coalesce((select count(*) from public.activity_likes l where l.activity_id = a.i
 coalesce((select count(*) from public.activity_comments c where c.activity_id = a.id), 0)::int
 `
 
-const listActivitiesQuery = `
--- List own activities and public activities for feed-like behavior.
+const listActivitiesFollowingQuery = `
+-- Following feed: own activities + followed users' visible activities.
 select ` + activitySelectColumns + `
 from public.activities a
 left join public.profiles p on p.id = a.user_id
 where a.user_id = $1::uuid
-   or a.visibility = 'public'
+   or (
+        exists (
+          select 1
+          from public.follows f
+          where f.follower_id = $1::uuid
+            and f.followed_id = a.user_id
+        )
+        and (
+          a.visibility = 'public'
+          or a.visibility = 'followers'
+          or (
+            a.visibility = 'team'
+            and exists (
+              select 1
+              from public.team_members tm
+              where tm.team_id = a.team_id
+                and tm.user_id = $1::uuid
+            )
+          )
+        )
+   )
+order by a.start_time desc
+limit 100
+`
+
+const listActivitiesGlobalQuery = `
+-- Global feed: public activities only.
+select ` + activitySelectColumns + `
+from public.activities a
+left join public.profiles p on p.id = a.user_id
+where a.visibility = 'public'
+order by a.start_time desc
+limit 100
+`
+
+const listActivitiesFriendsQuery = `
+-- Friends feed: own activities + mutual-follow users' visible activities.
+select ` + activitySelectColumns + `
+from public.activities a
+left join public.profiles p on p.id = a.user_id
+where a.user_id = $1::uuid
+   or (
+        exists (
+          select 1
+          from public.follows outbound
+          where outbound.follower_id = $1::uuid
+            and outbound.followed_id = a.user_id
+        )
+        and exists (
+          select 1
+          from public.follows inbound
+          where inbound.follower_id = a.user_id
+            and inbound.followed_id = $1::uuid
+        )
+        and (
+          a.visibility = 'public'
+          or a.visibility = 'followers'
+          or (
+            a.visibility = 'team'
+            and exists (
+              select 1
+              from public.team_members tm
+              where tm.team_id = a.team_id
+                and tm.user_id = $1::uuid
+            )
+          )
+        )
+   )
 order by a.start_time desc
 limit 100
 `
@@ -1600,7 +1879,28 @@ select ` + activitySelectColumns + `
 from public.activities a
 left join public.profiles p on p.id = a.user_id
 where a.id = $2::uuid
-  and (a.user_id = $1::uuid or a.visibility = 'public')
+  and (
+    a.user_id = $1::uuid
+    or a.visibility = 'public'
+    or (
+      a.visibility = 'followers'
+      and exists (
+        select 1
+        from public.follows f
+        where f.follower_id = $1::uuid
+          and f.followed_id = a.user_id
+      )
+    )
+    or (
+      a.visibility = 'team'
+      and exists (
+        select 1
+        from public.team_members tm
+        where tm.team_id = a.team_id
+          and tm.user_id = $1::uuid
+      )
+    )
+  )
 limit 1
 `
 
@@ -1655,6 +1955,67 @@ values ($1::uuid, $2::uuid)
 on conflict do nothing
 `
 
+const profileExistsQuery = `
+select exists (
+  select 1
+  from public.profiles p
+  where p.id = $1::uuid
+)
+`
+
+const insertFollowQuery = `
+insert into public.follows (follower_id, followed_id)
+values ($1::uuid, $2::uuid)
+on conflict do nothing
+`
+
+const deleteFollowQuery = `
+delete from public.follows
+where follower_id = $1::uuid
+  and followed_id = $2::uuid
+`
+
+const listFollowSuggestionsQuery = `
+select
+  p.id::text,
+  p.username,
+  p.display_name,
+  p.avatar_url,
+  p.created_at,
+  latest.last_public_activity
+from public.profiles p
+join (
+  select
+    a.user_id,
+    max(a.start_time) as last_public_activity
+  from public.activities a
+  where a.visibility = 'public'
+  group by a.user_id
+) latest on latest.user_id = p.id
+where p.id <> $1::uuid
+  and not exists (
+    select 1
+    from public.follows f
+    where f.follower_id = $1::uuid
+      and f.followed_id = p.id
+  )
+order by latest.last_public_activity desc, p.created_at desc
+limit $2
+`
+
+const metricsSummaryQuery = `
+select
+  count(*)::int,
+  coalesce(sum(a.distance_m), 0)::double precision,
+  coalesce(sum(a.duration_seconds), 0)::bigint,
+  avg(a.avg_split_500m_seconds)::double precision,
+  avg(a.avg_stroke_spm)::double precision
+from public.activities a
+where a.user_id = $1::uuid
+  and a.start_time >= $2::timestamptz
+  and a.start_time <= $3::timestamptz
+`
+
 // activityStore is a small repository around pgxpool.
 type activityStore struct {
 	pool *pgxpool.Pool
@@ -1707,10 +2068,15 @@ func (s *activityStore) close() {
 	s.pool.Close()
 }
 
-// list returns activities visible to the current user.
-func (s *activityStore) list(ctx context.Context, userID string) ([]Activity, error) {
+// list returns scoped feed activities visible to the current user.
+func (s *activityStore) list(ctx context.Context, userID string, scope FeedScope) ([]Activity, error) {
 	// Read path: query + scan into API model.
-	rows, err := s.pool.Query(ctx, listActivitiesQuery, userID)
+	query, err := activitiesQueryForScope(scope)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := s.pool.Query(ctx, query, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1729,6 +2095,19 @@ func (s *activityStore) list(ctx context.Context, userID string) ([]Activity, er
 	}
 
 	return activities, nil
+}
+
+func activitiesQueryForScope(scope FeedScope) (string, error) {
+	switch scope {
+	case feedScopeFollowing:
+		return listActivitiesFollowingQuery, nil
+	case feedScopeGlobal:
+		return listActivitiesGlobalQuery, nil
+	case feedScopeFriends:
+		return listActivitiesFriendsQuery, nil
+	default:
+		return "", fmt.Errorf("unsupported feed scope: %s", scope)
+	}
 }
 
 // create inserts a new activity and returns the inserted row in API shape.
@@ -1796,6 +2175,129 @@ func (s *activityStore) like(ctx context.Context, userID, activityID string) (Ac
 	}
 
 	return activity, true, nil
+}
+
+func (s *activityStore) follow(ctx context.Context, userID, targetUserID string) (bool, error) {
+	if err := s.ensureProfile(ctx, userID); err != nil {
+		return false, err
+	}
+
+	targetExists, err := s.profileExists(ctx, targetUserID)
+	if err != nil {
+		return false, err
+	}
+	if !targetExists {
+		return false, nil
+	}
+
+	if _, err := s.pool.Exec(ctx, insertFollowQuery, userID, targetUserID); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (s *activityStore) unfollow(ctx context.Context, userID, targetUserID string) (bool, error) {
+	targetExists, err := s.profileExists(ctx, targetUserID)
+	if err != nil {
+		return false, err
+	}
+	if !targetExists {
+		return false, nil
+	}
+
+	if _, err := s.pool.Exec(ctx, deleteFollowQuery, userID, targetUserID); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (s *activityStore) listFollowSuggestions(ctx context.Context, userID string, limit int) ([]FollowSuggestion, error) {
+	rows, err := s.pool.Query(ctx, listFollowSuggestionsQuery, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	suggestions := make([]FollowSuggestion, 0, limit)
+	for rows.Next() {
+		var (
+			suggestion         FollowSuggestion
+			displayName        sql.NullString
+			avatarURL          sql.NullString
+			lastPublicActivity sql.NullTime
+		)
+
+		if err := rows.Scan(
+			&suggestion.ID,
+			&suggestion.Username,
+			&displayName,
+			&avatarURL,
+			&suggestion.CreatedAt,
+			&lastPublicActivity,
+		); err != nil {
+			return nil, err
+		}
+
+		if displayName.Valid {
+			suggestion.DisplayName = stringPtr(displayName.String)
+		}
+		if avatarURL.Valid {
+			suggestion.AvatarURL = stringPtr(avatarURL.String)
+		}
+		if lastPublicActivity.Valid {
+			activityTime := lastPublicActivity.Time
+			suggestion.LastPublicActivity = &activityTime
+		}
+
+		suggestions = append(suggestions, suggestion)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return suggestions, nil
+}
+
+func (s *activityStore) metricsSummary(ctx context.Context, userID string, from, to time.Time) (MetricsSummary, error) {
+	var (
+		summary           MetricsSummary
+		avgSplitNullable  sql.NullFloat64
+		avgStrokeNullable sql.NullFloat64
+	)
+
+	summary.From = from
+	summary.To = to
+
+	if err := s.pool.QueryRow(ctx, metricsSummaryQuery, userID, from, to).Scan(
+		&summary.TotalWorkouts,
+		&summary.TotalDistanceM,
+		&summary.TotalDurationSeconds,
+		&avgSplitNullable,
+		&avgStrokeNullable,
+	); err != nil {
+		return MetricsSummary{}, err
+	}
+
+	if avgSplitNullable.Valid {
+		value := int32(avgSplitNullable.Float64 + 0.5)
+		summary.AvgSplit500MSeconds = &value
+	}
+	if avgStrokeNullable.Valid {
+		value := float32(avgStrokeNullable.Float64)
+		summary.AvgStrokeSPM = &value
+	}
+
+	return summary, nil
+}
+
+func (s *activityStore) profileExists(ctx context.Context, userID string) (bool, error) {
+	var exists bool
+	if err := s.pool.QueryRow(ctx, profileExistsQuery, userID).Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
 }
 
 // ensureProfile creates a minimal profile row so activities FK can reference it.

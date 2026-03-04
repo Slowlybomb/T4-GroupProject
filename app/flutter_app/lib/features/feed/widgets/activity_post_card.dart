@@ -5,14 +5,23 @@ import '../../../core/widgets/post_user_header.dart' as post_header;
 import '../domain/models/post.dart';
 
 class ActivityPostCard extends StatelessWidget {
+  const ActivityPostCard({
+    super.key,
+    required this.post,
+    this.onAvatarTap,
+    this.onLikeTap,
+    this.onCommentTap,
+    this.onShareTap,
+  });
+
   final Post post;
   final VoidCallback? onAvatarTap;
-
-  const ActivityPostCard({super.key, required this.post, this.onAvatarTap});
+  final VoidCallback? onLikeTap;
+  final VoidCallback? onCommentTap;
+  final VoidCallback? onShareTap;
 
   @override
   Widget build(BuildContext context) {
-    // Post card consumes feature-domain `Post`, decoupled from API DTOs.
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       padding: const EdgeInsets.all(16),
@@ -37,7 +46,7 @@ class ActivityPostCard extends StatelessWidget {
             onAvatarTap: onAvatarTap,
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12.0),
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
               post.title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -50,40 +59,153 @@ class ActivityPostCard extends StatelessWidget {
             strokeRate: post.strokeRate,
           ),
           const SizedBox(height: 15),
-          // TODO: replace with actual route map when map rendering is available.
-          Container(
-            height: 150,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: const Icon(Icons.map_outlined, color: Colors.blue, size: 40),
-          ),
+          _RoutePreview(routePoints: post.routePoints),
           const SizedBox(height: 15),
-          _PostActions(likes: post.likes),
+          _PostActions(
+            likes: post.likes,
+            onLikeTap: onLikeTap,
+            onCommentTap: onCommentTap,
+            onShareTap: onShareTap,
+          ),
         ],
       ),
     );
   }
 }
 
-class _PostActions extends StatelessWidget {
-  final int likes;
+class _RoutePreview extends StatelessWidget {
+  const _RoutePreview({required this.routePoints});
 
-  const _PostActions({required this.likes});
+  final List<RoutePoint> routePoints;
+
+  @override
+  Widget build(BuildContext context) {
+    if (routePoints.length < 2) {
+      return Container(
+        height: 150,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: const Icon(Icons.map_outlined, color: Colors.blue, size: 40),
+      );
+    }
+
+    return Container(
+      height: 150,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      padding: const EdgeInsets.all(10),
+      child: CustomPaint(
+        painter: _RoutePolylinePainter(routePoints),
+      ),
+    );
+  }
+}
+
+class _RoutePolylinePainter extends CustomPainter {
+  const _RoutePolylinePainter(this.routePoints);
+
+  final List<RoutePoint> routePoints;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (routePoints.length < 2) {
+      return;
+    }
+
+    var minLon = routePoints.first.longitude;
+    var maxLon = routePoints.first.longitude;
+    var minLat = routePoints.first.latitude;
+    var maxLat = routePoints.first.latitude;
+
+    for (final point in routePoints) {
+      if (point.longitude < minLon) minLon = point.longitude;
+      if (point.longitude > maxLon) maxLon = point.longitude;
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+    }
+
+    final lonSpan = (maxLon - minLon).abs();
+    final latSpan = (maxLat - minLat).abs();
+    final effectiveLonSpan = lonSpan == 0 ? 1.0 : lonSpan;
+    final effectiveLatSpan = latSpan == 0 ? 1.0 : latSpan;
+    const padding = 12.0;
+    final width = size.width - padding * 2;
+    final height = size.height - padding * 2;
+
+    final path = Path();
+    for (var index = 0; index < routePoints.length; index++) {
+      final point = routePoints[index];
+      final normalizedX = (point.longitude - minLon) / effectiveLonSpan;
+      final normalizedY = (point.latitude - minLat) / effectiveLatSpan;
+      final x = padding + normalizedX * width;
+      final y = padding + (1 - normalizedY) * height;
+
+      if (index == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+
+    final paint = Paint()
+      ..color = Colors.blue
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RoutePolylinePainter oldDelegate) {
+    return oldDelegate.routePoints != routePoints;
+  }
+}
+
+class _PostActions extends StatelessWidget {
+  const _PostActions({
+    required this.likes,
+    this.onLikeTap,
+    this.onCommentTap,
+    this.onShareTap,
+  });
+
+  final int likes;
+  final VoidCallback? onLikeTap;
+  final VoidCallback? onCommentTap;
+  final VoidCallback? onShareTap;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.favorite_border, color: Colors.red, size: 20),
+        InkWell(
+          onTap: onLikeTap,
+          child: const Icon(Icons.favorite_border, color: Colors.red, size: 20),
+        ),
         const SizedBox(width: 5),
         Text('$likes', style: const TextStyle(fontSize: 12)),
         const SizedBox(width: 15),
-        const Icon(Icons.chat_bubble_outline, color: Colors.grey, size: 20),
+        InkWell(
+          onTap: onCommentTap,
+          child: const Icon(
+            Icons.chat_bubble_outline,
+            color: Colors.grey,
+            size: 20,
+          ),
+        ),
         const Spacer(),
-        const Icon(Icons.share_outlined, color: Colors.grey, size: 20),
+        InkWell(
+          onTap: onShareTap,
+          child: const Icon(Icons.share_outlined, color: Colors.grey, size: 20),
+        ),
       ],
     );
   }

@@ -16,16 +16,16 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 // ─── BLE UUIDs — must match networking.h ─────────────────────────────────────
-const String kServiceUUID   = "12345678-1234-1234-1234-123456789abc";
-const String kCmdCharUUID   = "12345678-1234-1234-1234-123456789ab0";
-const String kDataCharUUID  = "12345678-1234-1234-1234-123456789ab1";
-const String kStatCharUUID  = "12345678-1234-1234-1234-123456789ab2";
+const String kServiceUUID = "12345678-1234-1234-1234-123456789abc";
+const String kCmdCharUUID = "12345678-1234-1234-1234-123456789ab0";
+const String kDataCharUUID = "12345678-1234-1234-1234-123456789ab1";
+const String kStatCharUUID = "12345678-1234-1234-1234-123456789ab2";
 const String BLE_DEVICE_NAME = "Gondolier";
 
 // ─── Packet types ─────────────────────────────────────────────────────────────
 const int PKT_METADATA = 0x01;
-const int PKT_STROKES  = 0x02;
-const int PKT_END      = 0xFF;
+const int PKT_STROKES = 0x02;
+const int PKT_END = 0xFF;
 
 // ─── Data model ──────────────────────────────────────────────────────────────
 class RowingSession {
@@ -46,8 +46,8 @@ class RowingSession {
     final m = (durationSeconds % 3600) ~/ 60;
     final s = durationSeconds % 60;
     return '${h.toString().padLeft(2, '0')}:'
-           '${m.toString().padLeft(2, '0')}:'
-           '${s.toString().padLeft(2, '0')}';
+        '${m.toString().padLeft(2, '0')}:'
+        '${s.toString().padLeft(2, '0')}';
   }
 
   String get formattedSplit {
@@ -67,8 +67,10 @@ class GondolierApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Gondolier',
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-                       useMaterial3: true),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        useMaterial3: true,
+      ),
       home: const ScanPage(),
     );
   }
@@ -84,7 +86,7 @@ class ScanPage extends StatefulWidget {
 class _ScanPageState extends State<ScanPage> {
   final List<ScanResult> _results = [];
   bool _scanning = false;
-  bool _debugMode = false;   // set to true to show ALL nearby BLE devices
+  bool _debugMode = false; // set to true to show ALL nearby BLE devices
   StreamSubscription? _scanSub;
 
   @override
@@ -102,7 +104,10 @@ class _ScanPageState extends State<ScanPage> {
   }
 
   Future<void> _startScan() async {
-    setState(() { _results.clear(); _scanning = true; });
+    setState(() {
+      _results.clear();
+      _scanning = true;
+    });
 
     _scanSub = FlutterBluePlus.scanResults.listen((results) {
       setState(() {
@@ -151,9 +156,13 @@ class _ScanPageState extends State<ScanPage> {
               const SizedBox(width: 12),
               TextButton(
                 onPressed: () => setState(() => _debugMode = !_debugMode),
-                child: Text(_debugMode ? 'Show: All' : 'Show: Gondolier',
-                            style: TextStyle(fontSize: 12,
-                                            color: _debugMode ? Colors.orange : Colors.grey)),
+                child: Text(
+                  _debugMode ? 'Show: All' : 'Show: Gondolier',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _debugMode ? Colors.orange : Colors.grey,
+                  ),
+                ),
               ),
             ],
           ),
@@ -231,7 +240,10 @@ class _SessionPageState extends State<SessionPage> {
     // Listen to connection state BEFORE calling connect()
     _connSub = widget.device.connectionState.listen((s) {
       if (s == BluetoothConnectionState.disconnected) {
-        setState(() { _connected = false; _status = 'Disconnected — tap retry'; });
+        setState(() {
+          _connected = false;
+          _status = 'Disconnected — tap retry';
+        });
       }
     });
 
@@ -242,7 +254,8 @@ class _SessionPageState extends State<SessionPage> {
 
         await widget.device.connect(
           timeout: const Duration(seconds: 10),
-          autoConnect: false,   // autoConnect=true causes the 15s timeout on Android
+          autoConnect:
+              false, // autoConnect=true causes the 15s timeout on Android
         );
 
         // Request higher MTU so packets aren't fragmented
@@ -252,17 +265,24 @@ class _SessionPageState extends State<SessionPage> {
           // MTU negotiation failure is non-fatal; we'll use default
         }
 
-        setState(() { _status = 'Connected. Discovering services…'; _connected = true; });
+        setState(() {
+          _status = 'Connected. Discovering services…';
+          _connected = true;
+        });
         break; // success — exit retry loop
-
       } catch (e) {
         if (attempt == 3) {
-          setState(() => _status = 'Failed to connect after 3 attempts.\nMake sure ESP32 is on and not already connected.\nError: $e');
+          setState(
+            () => _status =
+                'Failed to connect after 3 attempts.\nMake sure ESP32 is on and not already connected.\nError: $e',
+          );
           return;
         }
         // Short pause then retry
         await Future.delayed(const Duration(seconds: 2));
-        try { await widget.device.disconnect(); } catch (_) {}
+        try {
+          await widget.device.disconnect();
+        } catch (_) {}
         await Future.delayed(const Duration(seconds: 1));
       }
     }
@@ -273,7 +293,7 @@ class _SessionPageState extends State<SessionPage> {
       for (var svc in services) {
         if (svc.serviceUuid == Guid(kServiceUUID)) {
           for (var c in svc.characteristics) {
-            if (c.characteristicUuid == Guid(kCmdCharUUID))  _cmdChar  = c;
+            if (c.characteristicUuid == Guid(kCmdCharUUID)) _cmdChar = c;
             if (c.characteristicUuid == Guid(kDataCharUUID)) _dataChar = c;
           }
         }
@@ -282,7 +302,9 @@ class _SessionPageState extends State<SessionPage> {
       if (_cmdChar == null || _dataChar == null) {
         // Dump what we found to help debug
         final found = services.map((s) => s.serviceUuid.toString()).join(', ');
-        setState(() => _status = 'Characteristics not found.\nServices seen: $found');
+        setState(
+          () => _status = 'Characteristics not found.\nServices seen: $found',
+        );
         return;
       }
 
@@ -304,9 +326,21 @@ class _SessionPageState extends State<SessionPage> {
       case PKT_METADATA:
         // [0x01][seq 2B][strokeCount 4B][durationSec 4B][splitTenths 2B]
         if (data.length >= 13) {
-          _strokeCount = ByteData.sublistView(data, 3, 7).getUint32(0, Endian.little);
-          _durationSec = ByteData.sublistView(data, 7, 11).getUint32(0, Endian.little);
-          final splitTenths = ByteData.sublistView(data, 11, 13).getUint16(0, Endian.little);
+          _strokeCount = ByteData.sublistView(
+            data,
+            3,
+            7,
+          ).getUint32(0, Endian.little);
+          _durationSec = ByteData.sublistView(
+            data,
+            7,
+            11,
+          ).getUint32(0, Endian.little);
+          final splitTenths = ByteData.sublistView(
+            data,
+            11,
+            13,
+          ).getUint16(0, Endian.little);
           _avgSplit = splitTenths / 10.0;
           setState(() => _status = 'Receiving stroke data…');
         }
@@ -316,8 +350,11 @@ class _SessionPageState extends State<SessionPage> {
         // [0x02][seq 2B][ts0 4B][ts1 4B]…
         final numTs = (data.length - 3) ~/ 4;
         for (int i = 0; i < numTs; i++) {
-          final ts = ByteData.sublistView(data, 3 + i * 4, 7 + i * 4)
-                             .getUint32(0, Endian.little);
+          final ts = ByteData.sublistView(
+            data,
+            3 + i * 4,
+            7 + i * 4,
+          ).getUint32(0, Endian.little);
           _strokeTs.add(ts);
         }
         setState(() => _status = 'Received ${_strokeTs.length} strokes…');
@@ -330,14 +367,23 @@ class _SessionPageState extends State<SessionPage> {
           avgSplitSeconds: _avgSplit,
           strokeTimestampsMs: List.from(_strokeTs),
         );
-        setState(() { _done = true; _receiving = false; _status = 'Transfer complete!'; });
+        setState(() {
+          _done = true;
+          _receiving = false;
+          _status = 'Transfer complete!';
+        });
         break;
     }
   }
 
   Future<void> _requestSession() async {
     if (_cmdChar == null) return;
-    setState(() { _receiving = true; _done = false; _strokeTs.clear(); _status = 'Requesting session…'; });
+    setState(() {
+      _receiving = true;
+      _done = false;
+      _strokeTs.clear();
+      _status = 'Requesting session…';
+    });
     await _cmdChar!.write('GET_SESSION'.codeUnits, withoutResponse: false);
   }
 
@@ -353,11 +399,16 @@ class _SessionPageState extends State<SessionPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.device.platformName.isEmpty
-                    ? 'Gondolier' : widget.device.platformName),
+        title: Text(
+          widget.device.platformName.isEmpty
+              ? 'Gondolier'
+              : widget.device.platformName,
+        ),
         actions: [
-          Icon(_connected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
-               color: _connected ? Colors.green : Colors.red),
+          Icon(
+            _connected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
+            color: _connected ? Colors.green : Colors.red,
+          ),
           const SizedBox(width: 12),
         ],
       ),
@@ -387,21 +438,30 @@ class _SessionPageState extends State<SessionPage> {
             ),
             const SizedBox(height: 30),
             if (_done && _session != null) ...[
-              const Text('Session Results',
-                         style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const Text(
+                'Session Results',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
               const Divider(),
-              _StatRow('Strokes',  '${_session!.strokeCount}'),
+              _StatRow('Strokes', '${_session!.strokeCount}'),
               _StatRow('Duration', _session!.formattedDuration),
               _StatRow('Avg Split (500m)', _session!.formattedSplit),
-              _StatRow('Timestamps received', '${_session!.strokeTimestampsMs.length}'),
+              _StatRow(
+                'Timestamps received',
+                '${_session!.strokeTimestampsMs.length}',
+              ),
               const SizedBox(height: 20),
-              Text('Stroke cadence chart (${_session!.strokeTimestampsMs.length} points)',
-                   style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(
+                'Stroke cadence chart (${_session!.strokeTimestampsMs.length} points)',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 8),
               if (_session!.strokeTimestampsMs.length > 1)
                 SizedBox(
                   height: 150,
-                  child: _CadenceChart(timestamps: _session!.strokeTimestampsMs),
+                  child: _CadenceChart(
+                    timestamps: _session!.strokeTimestampsMs,
+                  ),
                 ),
             ],
           ],
@@ -422,7 +482,10 @@ class _StatRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(fontSize: 16)),
-          Text(value,  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
         ],
       ),
     );
@@ -438,7 +501,7 @@ class _CadenceChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final intervals = <double>[];
     for (int i = 1; i < timestamps.length; i++) {
-      intervals.add((timestamps[i] - timestamps[i - 1]) / 1000.0);  // seconds
+      intervals.add((timestamps[i] - timestamps[i - 1]) / 1000.0); // seconds
     }
     final maxI = intervals.fold(0.0, (a, b) => a > b ? a : b);
     if (maxI == 0) return const SizedBox.shrink();

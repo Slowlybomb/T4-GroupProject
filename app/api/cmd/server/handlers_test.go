@@ -17,10 +17,14 @@ import (
 )
 
 type fakeActivityService struct {
-	listFn   func(ctx context.Context, userID string) ([]Activity, error)
-	createFn func(ctx context.Context, userID string, req CreateActivityRequest) (Activity, error)
-	getFn    func(ctx context.Context, userID, activityID string) (Activity, bool, error)
-	likeFn   func(ctx context.Context, userID, activityID string) (Activity, bool, error)
+	listFn                  func(ctx context.Context, userID string, scope FeedScope) ([]Activity, error)
+	createFn                func(ctx context.Context, userID string, req CreateActivityRequest) (Activity, error)
+	getFn                   func(ctx context.Context, userID, activityID string) (Activity, bool, error)
+	likeFn                  func(ctx context.Context, userID, activityID string) (Activity, bool, error)
+	followFn                func(ctx context.Context, userID, targetUserID string) (bool, error)
+	unfollowFn              func(ctx context.Context, userID, targetUserID string) (bool, error)
+	listFollowSuggestionsFn func(ctx context.Context, userID string, limit int) ([]FollowSuggestion, error)
+	metricsSummaryFn        func(ctx context.Context, userID string, from, to time.Time) (MetricsSummary, error)
 }
 
 type fakeStorageSigner struct {
@@ -28,9 +32,9 @@ type fakeStorageSigner struct {
 	createSignedDownloadURLFn func(ctx context.Context, bucket, objectPath string, expiresIn time.Duration) (string, error)
 }
 
-func (f *fakeActivityService) list(ctx context.Context, userID string) ([]Activity, error) {
+func (f *fakeActivityService) list(ctx context.Context, userID string, scope FeedScope) ([]Activity, error) {
 	if f.listFn != nil {
-		return f.listFn(ctx, userID)
+		return f.listFn(ctx, userID, scope)
 	}
 	return []Activity{}, nil
 }
@@ -54,6 +58,37 @@ func (f *fakeActivityService) like(ctx context.Context, userID, activityID strin
 		return f.likeFn(ctx, userID, activityID)
 	}
 	return Activity{}, false, nil
+}
+
+func (f *fakeActivityService) follow(ctx context.Context, userID, targetUserID string) (bool, error) {
+	if f.followFn != nil {
+		return f.followFn(ctx, userID, targetUserID)
+	}
+	return true, nil
+}
+
+func (f *fakeActivityService) unfollow(ctx context.Context, userID, targetUserID string) (bool, error) {
+	if f.unfollowFn != nil {
+		return f.unfollowFn(ctx, userID, targetUserID)
+	}
+	return true, nil
+}
+
+func (f *fakeActivityService) listFollowSuggestions(ctx context.Context, userID string, limit int) ([]FollowSuggestion, error) {
+	if f.listFollowSuggestionsFn != nil {
+		return f.listFollowSuggestionsFn(ctx, userID, limit)
+	}
+	return []FollowSuggestion{}, nil
+}
+
+func (f *fakeActivityService) metricsSummary(ctx context.Context, userID string, from, to time.Time) (MetricsSummary, error) {
+	if f.metricsSummaryFn != nil {
+		return f.metricsSummaryFn(ctx, userID, from, to)
+	}
+	return MetricsSummary{
+		From: from,
+		To:   to,
+	}, nil
 }
 
 // createSignedUploadURL delegates to the injected fake function.
@@ -141,9 +176,12 @@ func TestActivitiesGetReturnsStoreValues(t *testing.T) {
 	now := time.Now().UTC()
 
 	store := &fakeActivityService{
-		listFn: func(ctx context.Context, userID string) ([]Activity, error) {
+		listFn: func(ctx context.Context, userID string, scope FeedScope) ([]Activity, error) {
 			if userID != wantUserID {
 				t.Fatalf("expected userID %s, got %s", wantUserID, userID)
+			}
+			if scope != feedScopeFollowing {
+				t.Fatalf("expected default following scope, got %s", scope)
 			}
 			return []Activity{
 				{
@@ -368,6 +406,212 @@ func TestActivitiesLikeStoreError(t *testing.T) {
 	if w.Code != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d", w.Code)
 	}
+}
+
+func TestActivitiesGetRejectsInvalidScope(t *testing.T) {
+	r := testRouter(t, fakeAuthWithUser("11111111-1111-1111-1111-111111111111"), &fakeActivityService{}, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/activities?scope=invalid", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestActivitiesGetUsesExplicitScope(t *testing.T) {
+	const userID = "11111111-1111-1111-1111-111111111111"
+	capturedScope := feedScopeFollowing
+
+	store := &fakeActivityService{
+		listFn: func(ctx context.Context, gotUserID string, scope FeedScope) ([]Activity, error) {
+			if gotUserID != userID {
+				t.Fatalf("expected userID %s, got %s", userID, gotUserID)
+			}
+			capturedScope = scope
+			return []Activity{}, nil
+		},
+	}
+
+	r := testRouter(t, fakeAuthWithUser(userID), store, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/activities?scope=friends", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	if capturedScope != feedScopeFriends {
+		t.Fatalf("expected friends scope, got %s", capturedScope)
+	}
+}
+
+func TestFollowsPutSuccess(t *testing.T) {
+	const userID = "11111111-1111-1111-1111-111111111111"
+	const targetID = "22222222-2222-2222-2222-222222222222"
+
+	store := &fakeActivityService{
+		followFn: func(ctx context.Context, gotUserID, gotTargetID string) (bool, error) {
+			if gotUserID != userID {
+				t.Fatalf("expected userID %s, got %s", userID, gotUserID)
+			}
+			if gotTargetID != targetID {
+				t.Fatalf("expected targetID %s, got %s", targetID, gotTargetID)
+			}
+			return true, nil
+		},
+	}
+
+	r := testRouter(t, fakeAuthWithUser(userID), store, nil)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/follows/"+targetID, nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d", w.Code)
+	}
+}
+
+func TestFollowsPutRejectsSelfFollow(t *testing.T) {
+	const userID = "11111111-1111-1111-1111-111111111111"
+	r := testRouter(t, fakeAuthWithUser(userID), &fakeActivityService{}, nil)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/follows/"+userID, nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestFollowsPutReturnsNotFoundWhenTargetMissing(t *testing.T) {
+	const userID = "11111111-1111-1111-1111-111111111111"
+	const targetID = "22222222-2222-2222-2222-222222222222"
+
+	store := &fakeActivityService{
+		followFn: func(ctx context.Context, gotUserID, gotTargetID string) (bool, error) {
+			return false, nil
+		},
+	}
+
+	r := testRouter(t, fakeAuthWithUser(userID), store, nil)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/follows/"+targetID, nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestFollowsSuggestionsUsesLimitClamp(t *testing.T) {
+	const userID = "11111111-1111-1111-1111-111111111111"
+	capturedLimit := 0
+
+	store := &fakeActivityService{
+		listFollowSuggestionsFn: func(ctx context.Context, gotUserID string, limit int) ([]FollowSuggestion, error) {
+			if gotUserID != userID {
+				t.Fatalf("expected userID %s, got %s", userID, gotUserID)
+			}
+			capturedLimit = limit
+			return []FollowSuggestion{
+				{
+					ID:        "33333333-3333-3333-3333-333333333333",
+					Username:  "sarah",
+					CreatedAt: time.Now().UTC(),
+				},
+			}, nil
+		},
+	}
+
+	r := testRouter(t, fakeAuthWithUser(userID), store, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/follows/suggestions?limit=200", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d, body=%s", w.Code, w.Body.String())
+	}
+	if capturedLimit != maxSuggestionsLimit {
+		t.Fatalf("expected clamped limit %d, got %d", maxSuggestionsLimit, capturedLimit)
+	}
+}
+
+func TestMetricsSummarySuccess(t *testing.T) {
+	const userID = "11111111-1111-1111-1111-111111111111"
+	from := time.Date(2026, 1, 5, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 1, 7, 12, 0, 0, 0, time.UTC)
+
+	store := &fakeActivityService{
+		metricsSummaryFn: func(ctx context.Context, gotUserID string, gotFrom, gotTo time.Time) (MetricsSummary, error) {
+			if gotUserID != userID {
+				t.Fatalf("expected userID %s, got %s", userID, gotUserID)
+			}
+			if !gotFrom.Equal(from) || !gotTo.Equal(to) {
+				t.Fatalf("unexpected range from=%s to=%s", gotFrom, gotTo)
+			}
+			return MetricsSummary{
+				From:                 gotFrom,
+				To:                   gotTo,
+				TotalWorkouts:        4,
+				TotalDistanceM:       12345,
+				TotalDurationSeconds: 3600,
+			}, nil
+		},
+	}
+
+	r := testRouter(t, fakeAuthWithUser(userID), store, nil)
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/metrics/summary?from="+urlQueryEscape(from.Format(time.RFC3339))+"&to="+urlQueryEscape(to.Format(time.RFC3339)),
+		nil,
+	)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d, body=%s", w.Code, w.Body.String())
+	}
+}
+
+func TestMetricsSummaryRejectsInvertedRange(t *testing.T) {
+	const userID = "11111111-1111-1111-1111-111111111111"
+	r := testRouter(t, fakeAuthWithUser(userID), &fakeActivityService{}, nil)
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/metrics/summary?from=2026-01-07T12:00:00Z&to=2026-01-05T00:00:00Z",
+		nil,
+	)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestMetricsSummaryRejectsBadTimestamp(t *testing.T) {
+	const userID = "11111111-1111-1111-1111-111111111111"
+	r := testRouter(t, fakeAuthWithUser(userID), &fakeActivityService{}, nil)
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/metrics/summary?from=bad-value&to=2026-01-05T00:00:00Z",
+		nil,
+	)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func urlQueryEscape(value string) string {
+	return strings.ReplaceAll(value, ":", "%3A")
 }
 
 // TestFilesUploadURLSuccess verifies happy-path upload URL signing.
