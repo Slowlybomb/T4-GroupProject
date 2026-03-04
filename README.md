@@ -9,14 +9,14 @@
         - GPS;
     - Detected strokes per minute.
     - Distance and time since the first stroke.
-    -  Battery charge.
-    -  Time per 500 m.
-2)  Embedded UI
-    -  Interface to view stats and control the device.
-2) Communication
+    - Battery charge.
+    - Time per 500 m.
+2) Embedded UI
+    - Interface to view stats and control the device.
+3) Communication
     - Wi-Fi or Bluetooth connection to phone or computer.
     - Possibility to add future connected devices, like a heart rate sensor or a boat impeller, etc.
-3) Phone/Computer application
+4) Phone/Computer application
     - Phone app to connect to the device, store previous workouts, view graphs and GPS maps (strava like app).
     - Computer Interface to view more detailed information, like the raw accelerometer.
     - Possibility for a social aspect with a public feed in the app so that people can share their rows.
