@@ -53,6 +53,7 @@ class FeedController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Feed list drives the main scroll body, so load it first.
       _posts = await _feedRepository.getPosts(scope: _selectedScope);
     } catch (_) {
       _errorMessage = 'Unable to load feed right now.';
@@ -95,6 +96,7 @@ class FeedController extends ChangeNotifier {
     }
 
     _likingPostIds.add(postId);
+    // Optimistic update keeps UI responsive while backend call is in-flight.
     final optimistic = post.copyWith(likes: post.likes + 1);
     _replacePost(optimistic);
     notifyListeners();
@@ -161,6 +163,7 @@ class FeedController extends ChangeNotifier {
   _WeekRange _resolveCurrentWeekRange() {
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
+    // App defines weekly summary as calendar week-to-date (Monday start).
     final monday = startOfDay.subtract(Duration(days: now.weekday - 1));
     return _WeekRange(from: monday.toUtc(), to: now.toUtc());
   }

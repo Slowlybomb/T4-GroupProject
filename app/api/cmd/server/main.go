@@ -1693,6 +1693,7 @@ func parseActivityID(raw string) (string, bool) {
 }
 
 func parseFeedScope(raw string) (FeedScope, bool) {
+	// Empty scope keeps backward-compatible behavior for existing clients.
 	scope := strings.ToLower(strings.TrimSpace(raw))
 	switch scope {
 	case "", string(feedScopeFollowing):
@@ -1709,6 +1710,7 @@ func parseFeedScope(raw string) (FeedScope, bool) {
 func parseSuggestionsLimit(raw string) (int, bool) {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
+		// Use a small default to keep feed payload and query cost predictable.
 		return defaultSuggestionsLimit, true
 	}
 
@@ -1721,6 +1723,7 @@ func parseSuggestionsLimit(raw string) (int, bool) {
 		value = minSuggestionsLimit
 	}
 	if value > maxSuggestionsLimit {
+		// Clamp instead of rejecting to keep API ergonomic for clients.
 		value = maxSuggestionsLimit
 	}
 
@@ -2098,6 +2101,8 @@ func (s *activityStore) list(ctx context.Context, userID string, scope FeedScope
 }
 
 func activitiesQueryForScope(scope FeedScope) (string, error) {
+	// Route-level validation should already reject unsupported scopes; this guard
+	// prevents accidental fallthrough when called from new code paths.
 	switch scope {
 	case feedScopeFollowing:
 		return listActivitiesFollowingQuery, nil
@@ -2178,6 +2183,7 @@ func (s *activityStore) like(ctx context.Context, userID, activityID string) (Ac
 }
 
 func (s *activityStore) follow(ctx context.Context, userID, targetUserID string) (bool, error) {
+	// Ensure follower profile exists so FK checks remain deterministic.
 	if err := s.ensureProfile(ctx, userID); err != nil {
 		return false, err
 	}
@@ -2198,6 +2204,7 @@ func (s *activityStore) follow(ctx context.Context, userID, targetUserID string)
 }
 
 func (s *activityStore) unfollow(ctx context.Context, userID, targetUserID string) (bool, error) {
+	// Keep not-found semantics consistent with follow: unknown target => false,nil.
 	targetExists, err := s.profileExists(ctx, targetUserID)
 	if err != nil {
 		return false, err
@@ -2281,6 +2288,7 @@ func (s *activityStore) metricsSummary(ctx context.Context, userID string, from,
 	}
 
 	if avgSplitNullable.Valid {
+		// Persisted split is whole seconds, so round aggregate to nearest second.
 		value := int32(avgSplitNullable.Float64 + 0.5)
 		summary.AvgSplit500MSeconds = &value
 	}

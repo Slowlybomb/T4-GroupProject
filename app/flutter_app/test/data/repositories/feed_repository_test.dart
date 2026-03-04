@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gondolier/core/network/api_error.dart';
 import 'package:gondolier/data/models/activity_dto.dart';
 import 'package:gondolier/data/models/create_activity_request_dto.dart';
+import 'package:gondolier/data/models/follow_suggestion_dto.dart';
+import 'package:gondolier/data/models/metrics_summary_dto.dart';
 import 'package:gondolier/data/repositories/activity_api_repository.dart';
 import 'package:gondolier/data/repositories/feed_repository.dart';
 
@@ -15,7 +17,7 @@ class _FakeActivityApiRepository implements ActivityApiRepository {
   final Object? listActivitiesError;
 
   @override
-  Future<List<ActivityDto>> listActivities() async {
+  Future<List<ActivityDto>> listActivities({String scope = 'following'}) async {
     final error = listActivitiesError;
     if (error != null) {
       throw error;
@@ -29,7 +31,18 @@ class _FakeActivityApiRepository implements ActivityApiRepository {
   }
 
   @override
+  Future<void> followUser(String userId) async {}
+
+  @override
   Future<ActivityDto> getActivityById(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<MetricsSummaryDto> getMetricsSummary({
+    required DateTime from,
+    required DateTime to,
+  }) {
     throw UnimplementedError();
   }
 
@@ -37,12 +50,20 @@ class _FakeActivityApiRepository implements ActivityApiRepository {
   Future<ActivityDto> likeActivity(String id) {
     throw UnimplementedError();
   }
+
+  @override
+  Future<List<FollowSuggestionDto>> listFollowSuggestions({int limit = 5}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> unfollowUser(String userId) async {}
 }
 
 void main() {
   group('FeedRepository', () {
     test(
-      'returns fallback rows when remote activities list is empty',
+      'returns empty list when remote feed is empty and fallback is disabled',
       () async {
         final repository = FeedRepository(
           activityApiRepository: _FakeActivityApiRepository(
@@ -51,7 +72,27 @@ void main() {
           useLocalFallback: false,
         );
 
-        final activities = await repository.getFeedActivities();
+        final activities = await repository.getFeedActivities(
+          scope: 'following',
+        );
+
+        expect(activities, isEmpty);
+      },
+    );
+
+    test(
+      'returns fallback rows when remote feed is empty and fallback is enabled',
+      () async {
+        final repository = FeedRepository(
+          activityApiRepository: _FakeActivityApiRepository(
+            listActivitiesResult: const <ActivityDto>[],
+          ),
+          useLocalFallback: true,
+        );
+
+        final activities = await repository.getFeedActivities(
+          scope: 'following',
+        );
 
         expect(activities, isNotEmpty);
         expect(activities.first.userName, isNotEmpty);
@@ -71,7 +112,7 @@ void main() {
       );
 
       await expectLater(
-        repository.getFeedActivities(),
+        repository.getFeedActivities(scope: 'following'),
         throwsA(
           isA<ApiError>().having(
             (error) => error.statusCode,

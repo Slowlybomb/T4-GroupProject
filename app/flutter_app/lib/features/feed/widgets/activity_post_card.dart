@@ -100,9 +100,7 @@ class _RoutePreview extends StatelessWidget {
         borderRadius: BorderRadius.circular(15),
       ),
       padding: const EdgeInsets.all(10),
-      child: CustomPaint(
-        painter: _RoutePolylinePainter(routePoints),
-      ),
+      child: CustomPaint(painter: _RoutePolylinePainter(routePoints)),
     );
   }
 }
@@ -141,6 +139,7 @@ class _RoutePolylinePainter extends CustomPainter {
     final path = Path();
     for (var index = 0; index < routePoints.length; index++) {
       final point = routePoints[index];
+      // Convert geo coordinates into local [0..1] bounds so any route fits card.
       final normalizedX = (point.longitude - minLon) / effectiveLonSpan;
       final normalizedY = (point.latitude - minLat) / effectiveLatSpan;
       final x = padding + normalizedX * width;

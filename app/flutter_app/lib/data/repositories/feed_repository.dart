@@ -15,9 +15,7 @@ class FeedRepository {
   final ActivityApiRepository _activityApiRepository;
   final bool _useLocalFallback;
 
-  Future<List<ActivityModel>> getFeedActivities({
-    required String scope,
-  }) async {
+  Future<List<ActivityModel>> getFeedActivities({required String scope}) async {
     try {
       final remoteActivities = await _activityApiRepository.listActivities(
         scope: scope,

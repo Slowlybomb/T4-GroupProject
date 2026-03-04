@@ -36,7 +36,10 @@ class WhoToFollowSection extends StatelessWidget {
         if (errorMessage != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-            child: Text(errorMessage!, style: const TextStyle(color: Colors.grey)),
+            child: Text(
+              errorMessage!,
+              style: const TextStyle(color: Colors.grey),
+            ),
           ),
         const SizedBox(height: 15),
         SizedBox(
@@ -82,10 +85,7 @@ class _FollowerCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 5,
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5),
         ],
       ),
       child: Column(

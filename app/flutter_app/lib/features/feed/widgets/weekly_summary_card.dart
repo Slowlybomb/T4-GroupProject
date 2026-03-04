@@ -52,7 +52,10 @@ class WeeklySummaryCard extends StatelessWidget {
                 child: _SummaryStat(label: 'Distance', value: distanceValue),
               ),
               Expanded(
-                child: _SummaryStat(label: 'Activities', value: activitiesValue),
+                child: _SummaryStat(
+                  label: 'Activities',
+                  value: activitiesValue,
+                ),
               ),
             ],
           ),
@@ -62,10 +65,7 @@ class WeeklySummaryCard extends StatelessWidget {
           ],
           if (errorMessage != null) ...[
             const SizedBox(height: 10),
-            Text(
-              errorMessage!,
-              style: const TextStyle(color: Colors.white70),
-            ),
+            Text(errorMessage!, style: const TextStyle(color: Colors.white70)),
           ],
           const SizedBox(height: 20),
           SizedBox(

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/widgets/post_stats_row.dart';
 import '../../../core/widgets/post_user_header.dart';
@@ -10,12 +9,18 @@ class PostDetailScreen extends StatelessWidget {
   final Post post;
   final VoidCallback onClose;
   final VoidCallback? onAvatarTap;
+  final Future<void> Function(Post post)? onLike;
+  final VoidCallback? onComment;
+  final VoidCallback? onShare;
 
   const PostDetailScreen({
     super.key,
     required this.post,
     required this.onClose,
     this.onAvatarTap,
+    this.onLike,
+    this.onComment,
+    this.onShare,
   });
 
   @override
@@ -63,7 +68,12 @@ class PostDetailScreen extends StatelessWidget {
                       strokeRate: post.strokeRate,
                     ),
                     const SizedBox(height: 30),
-                    _ActionBar(likes: post.likes),
+                    _ActionBar(
+                      likes: post.likes,
+                      onLike: onLike == null ? null : () => onLike!(post),
+                      onComment: onComment,
+                      onShare: onShare,
+                    ),
                     const SizedBox(height: 24),
                     const _CommentsSection(),
                     const SizedBox(height: 40),
@@ -126,76 +136,42 @@ class _DragHandle extends StatelessWidget {
 }
 
 // ─── Interactive action bar ───────────────────────────────────────────────────
-class _ActionBar extends StatefulWidget {
+class _ActionBar extends StatelessWidget {
   final int likes;
-  const _ActionBar({required this.likes});
+  final Future<void> Function()? onLike;
+  final VoidCallback? onComment;
+  final VoidCallback? onShare;
 
-  @override
-  State<_ActionBar> createState() => _ActionBarState();
-}
-
-class _ActionBarState extends State<_ActionBar> {
-  late bool _liked;
-  late int _count;
-  bool _showComments = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _liked = false;
-    _count = widget.likes;
-  }
-
-  void _toggleLike() {
-    setState(() {
-      _liked = !_liked;
-      _count += _liked ? 1 : -1;
-    });
-  }
-
-  void _share(BuildContext context) {
-    Clipboard.setData(const ClipboardData(text: 'https://gondolier.app/activity/1'));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Link copied!'),
-        duration: Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
+  const _ActionBar({
+    required this.likes,
+    this.onLike,
+    this.onComment,
+    this.onShare,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _ActionBtn(
-              icon: _liked ? Icons.favorite : Icons.favorite_border,
-              label: '$_count',
-              color: _liked ? Colors.red : Colors.grey,
-              onTap: _toggleLike,
-            ),
-            _ActionBtn(
-              icon: Icons.chat_bubble_outline,
-              label: 'Comment',
-              color: _showComments ? Colors.red : Colors.grey,
-              onTap: () => setState(() => _showComments = !_showComments),
-            ),
-            _ActionBtn(
-              icon: Icons.share_outlined,
-              label: 'Share',
-              color: Colors.grey,
-              onTap: () => _share(context),
-            ),
-          ],
+        _ActionBtn(
+          icon: Icons.favorite_border,
+          label: '$likes',
+          color: Colors.grey,
+          onTap: () => onLike?.call(),
         ),
-        if (_showComments) ...[
-          const SizedBox(height: 16),
-          const _CommentsSection(),
-        ],
+        _ActionBtn(
+          icon: Icons.chat_bubble_outline,
+          label: 'Comment',
+          color: Colors.grey,
+          onTap: onComment,
+        ),
+        _ActionBtn(
+          icon: Icons.share_outlined,
+          label: 'Share',
+          color: Colors.grey,
+          onTap: onShare,
+        ),
       ],
     );
   }
@@ -205,7 +181,7 @@ class _ActionBtn extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _ActionBtn({
     required this.icon,
@@ -261,7 +237,10 @@ class _CommentsSection extends StatelessWidget {
             hintStyle: const TextStyle(color: Colors.grey),
             filled: true,
             fillColor: const Color(0xFFF5F5F5),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(24),
               borderSide: BorderSide.none,
@@ -298,9 +277,18 @@ class _CommentTile extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Text(timeAgo, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                  Text(
+                    timeAgo,
+                    style: const TextStyle(color: Colors.grey, fontSize: 11),
+                  ),
                 ],
               ),
               const SizedBox(height: 3),

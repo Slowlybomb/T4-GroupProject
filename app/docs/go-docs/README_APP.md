@@ -22,16 +22,21 @@ Flutter integration should use currently implemented Go routes:
 - `GET /health` (public)
 - `GET /api/v1/health` (public)
 - `GET /api/v1/activities` (auth required)
+  - supports `scope=following|global|friends` (default: `following`)
 - `POST /api/v1/activities` (auth required)
 - `GET /api/v1/activities/:id` (auth required)
 - `PATCH /api/v1/activities/:id/like` (auth required)
+- `PUT /api/v1/follows/:user_id` (auth required)
+- `DELETE /api/v1/follows/:user_id` (auth required)
+- `GET /api/v1/follows/suggestions` (auth required)
+- `GET /api/v1/metrics/summary` (auth required, requires `from` and `to` RFC3339 query params)
 - `POST /api/v1/files/upload-url` (auth required)
 - `POST /api/v1/files/download-url` (auth required)
 - `GET /api/v1/ws` (auth required)
 
-Known gap:
-- `app/api/openapi.yaml` still documents future naming such as `/workouts` and `/feed`.
-- Do not rename backend routes in this slice; align OpenAPI in a follow-up task.
+OpenAPI note:
+- `app/api/openapi.yaml` now includes the current feed-related source-of-truth routes
+  (`/activities`, `/follows`, `/metrics/summary`) used by Flutter.
 
 ## Go API Env Snapshot (`app/api/.env.dev`)
 

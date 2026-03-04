@@ -100,9 +100,7 @@ class ApiFeedRepository implements FeedRepository {
       comments: activity.comments,
       routePoints: activity.routeCoordinates
           .where((pair) => pair.length >= 2)
-          .map(
-            (pair) => RoutePoint(longitude: pair[0], latitude: pair[1]),
-          )
+          .map((pair) => RoutePoint(longitude: pair[0], latitude: pair[1]))
           .toList(growable: false),
     );
   }

@@ -132,7 +132,9 @@ class DioActivityApiRepository implements ActivityApiRepository {
       );
       final data = response.data;
       if (data is! Map) {
-        throw const FormatException('Expected follow suggestions response object');
+        throw const FormatException(
+          'Expected follow suggestions response object',
+        );
       }
 
       final items = (Map<String, dynamic>.from(data))['items'];

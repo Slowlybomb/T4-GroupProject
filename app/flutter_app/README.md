@@ -16,10 +16,11 @@ flutter run \
   --dart-define=API_BASE_URL=http://localhost:8080 \
   --dart-define=SUPABASE_URL=https://<project-ref>.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=<anon-key> \
-  --dart-define=USE_LOCAL_FEED_FALLBACK=true
+  --dart-define=USE_LOCAL_FEED_FALLBACK=false
 ```
 
 `API_BASE_URL`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` are required by `RuntimeConfig`.
+`USE_LOCAL_FEED_FALLBACK` is optional and defaults to `false`.
 
 ## Authentication Flow
 
