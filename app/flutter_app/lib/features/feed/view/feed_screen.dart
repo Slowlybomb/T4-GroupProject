@@ -1,144 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../widgets/post_stats_row.dart';
+
 import '../controller/feed_controller.dart';
+import '../domain/models/feed_scope.dart';
 import '../domain/models/post.dart';
 import '../widgets/activity_post_card.dart';
 import '../widgets/filter_tabs.dart';
 import '../widgets/weekly_summary_card.dart';
 import '../widgets/who_to_follow_section.dart';
-import '../../ble/view/ble_session_screen.dart';
-import '../../profile/view/user_profile_screen.dart';
 
-// ─── "Your Posts" demo data ───────────────────────────────────────────────────
-const _kYourPosts = [
-  Post(
-    userName: 'You',
-    timestamp: '2 days ago',
-    title: 'Morning row on the Liffey',
-    distance: '8.4 km',
-    duration: '42:15',
-    avgSplit: '2:31',
-    strokeRate: '22 spm',
-    likes: 14,
-  ),
-  Post(
-    userName: 'You',
-    timestamp: '5 days ago',
-    title: 'Evening session',
-    distance: '5.2 km',
-    duration: '27:40',
-    avgSplit: '2:39',
-    strokeRate: '20 spm',
-    likes: 8,
-  ),
-  Post(
-    userName: 'You',
-    timestamp: '1 week ago',
-    title: 'Long distance training',
-    distance: '14.1 km',
-    duration: '1:12:08',
-    avgSplit: '2:33',
-    strokeRate: '21 spm',
-    likes: 31,
-  ),
-];
+class FeedScreen extends StatelessWidget {
+  const FeedScreen({super.key, this.onViewProgress});
 
-// ─── Discover tab demo data ───────────────────────────────────────────────────
-const _kDiscoverPosts = [
-  Post(
-    userName: 'Emma Walsh',
-    timestamp: '1 hour ago',
-    title: 'Sunrise sprint on the Barrow',
-    distance: '6.2 km',
-    duration: '31:05',
-    avgSplit: '2:30',
-    strokeRate: '24 spm',
-    likes: 22,
-  ),
-  Post(
-    userName: 'Liam Brennan',
-    timestamp: '3 hours ago',
-    title: 'Club time trial',
-    distance: '2.0 km',
-    duration: '07:48',
-    avgSplit: '1:57',
-    strokeRate: '28 spm',
-    likes: 45,
-  ),
-  Post(
-    userName: 'Sophie Müller',
-    timestamp: '5 hours ago',
-    title: 'Recovery paddle — Rhine',
-    distance: '9.8 km',
-    duration: '58:20',
-    avgSplit: '2:58',
-    strokeRate: '18 spm',
-    likes: 11,
-  ),
-  Post(
-    userName: 'Cian Murphy',
-    timestamp: 'Yesterday',
-    title: 'Half-marathon prep',
-    distance: '21.1 km',
-    duration: '1:48:33',
-    avgSplit: '2:34',
-    strokeRate: '22 spm',
-    likes: 67,
-  ),
-  Post(
-    userName: 'Aoife Doyle',
-    timestamp: 'Yesterday',
-    title: 'Interval sets — Grand Canal',
-    distance: '7.5 km',
-    duration: '38:12',
-    avgSplit: '2:33',
-    strokeRate: '26 spm',
-    likes: 19,
-  ),
-  Post(
-    userName: 'Tom Fitzgerald',
-    timestamp: '2 days ago',
-    title: 'Steady-state endurance',
-    distance: '16.0 km',
-    duration: '1:25:10',
-    avgSplit: '2:39',
-    strokeRate: '20 spm',
-    likes: 34,
-  ),
-  Post(
-    userName: 'Niamh Kelly',
-    timestamp: '2 days ago',
-    title: 'Morning double — River Lee',
-    distance: '12.4 km',
-    duration: '1:04:50',
-    avgSplit: '2:36',
-    strokeRate: '21 spm',
-    likes: 28,
-  ),
-  Post(
-    userName: 'Ryan Connolly',
-    timestamp: '3 days ago',
-    title: 'National qualifying piece',
-    distance: '5.0 km',
-    duration: '20:15',
-    avgSplit: '2:01',
-    strokeRate: '30 spm',
-    likes: 103,
-  ),
-];
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
-
-class FeedScreen extends StatefulWidget {
-  const FeedScreen({super.key});
-
-  @override
-  State<FeedScreen> createState() => _FeedScreenState();
-}
-
-class _FeedScreenState extends State<FeedScreen> {
-  int _selectedTab = 0;
+  final VoidCallback? onViewProgress;
 
   @override
   Widget build(BuildContext context) {
@@ -149,66 +23,52 @@ class _FeedScreenState extends State<FeedScreen> {
           final slivers = <Widget>[
             SliverToBoxAdapter(
               child: _MainHeader(
-                  onTabChanged: (i) => setState(() => _selectedTab = i)),
+                selectedScope: controller.selectedScope,
+                onScopeSelected: (scope) {
+                  controller.changeScope(scope);
+                },
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: WeeklySummaryCard(
+                summary: controller.weeklySummary,
+                isLoading: controller.isLoading,
+                errorMessage: controller.summaryErrorMessage,
+                onViewProgress: widget.onViewProgress,
+              ),
             ),
           ];
 
-          if (_selectedTab == 2) {
-            // ── Your Posts tab ────────────────────────────────────────────
-            slivers.add(const SliverToBoxAdapter(child: _BleConnectCard()));
-            slivers.add(SliverList(
-              delegate: SliverChildListDelegate(
-                _kYourPosts
-                    .map((p) => ActivityPostCard(
-                          post: p,
-                          onAvatarTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  UserProfileScreen(name: p.userName),
-                            ),
-                          ),
-                        ))
-                    .toList(),
-              ),
-            ));
-          } else if (_selectedTab == 1) {
-            // ── Discover tab ──────────────────────────────────────────────
-            slivers.add(_buildFeedContent(
-              context: context,
-              posts: _kDiscoverPosts,
-              onPostTap: controller.selectPost,
-              showWhoToFollow: false,
-            ));
-          } else {
-            // ── Following tab ─────────────────────────────────────────────
+          if (controller.isLoading && controller.posts.isEmpty) {
             slivers.add(
-                const SliverToBoxAdapter(child: WeeklySummaryCard()));
-
-            if (controller.isLoading && controller.posts.isEmpty) {
-              slivers.add(const SliverFillRemaining(
+              const SliverFillRemaining(
                 hasScrollBody: false,
                 child: Center(child: CircularProgressIndicator()),
-              ));
-            } else if (controller.errorMessage != null &&
-                controller.posts.isEmpty) {
-              slivers.add(SliverFillRemaining(
+              ),
+            );
+          } else if (controller.errorMessage != null &&
+              controller.posts.isEmpty) {
+            slivers.add(
+              SliverFillRemaining(
                 hasScrollBody: false,
                 child: _FeedErrorState(onRetry: controller.loadPosts),
-              ));
-            } else if (controller.posts.isEmpty) {
-              slivers.add(const SliverFillRemaining(
+              ),
+            );
+          } else if (controller.posts.isEmpty) {
+            slivers.add(
+              const SliverFillRemaining(
                 hasScrollBody: false,
                 child: _FeedEmptyState(),
-              ));
-            } else {
-              slivers.add(_buildFeedContent(
+              ),
+            );
+          } else {
+            slivers.add(
+              _buildFeedContent(
                 context: context,
+                controller: controller,
                 posts: controller.posts,
-                onPostTap: controller.selectPost,
-                showWhoToFollow: true,
-              ));
-            }
+              ),
+            );
           }
 
           return CustomScrollView(slivers: slivers);
@@ -219,129 +79,84 @@ class _FeedScreenState extends State<FeedScreen> {
 
   Widget _buildFeedContent({
     required BuildContext context,
+    required FeedController controller,
     required List<Post> posts,
-    required ValueChanged<Post> onPostTap,
-    required bool showWhoToFollow,
   }) {
     final children = <Widget>[];
     var insertedWhoToFollow = false;
 
     for (var index = 0; index < posts.length; index++) {
-      if (showWhoToFollow && index == 2) {
-        children.add(const WhoToFollowSection());
+      if (index == 2) {
+        children.add(
+          WhoToFollowSection(
+            suggestions: controller.suggestions,
+            errorMessage: controller.suggestionsErrorMessage,
+            isFollowing: controller.isFollowing,
+            onFollowTap: (suggestion) async {
+              final success = await controller.followSuggestion(suggestion);
+              if (!success && context.mounted) {
+                _showSnack(context, 'Unable to follow user right now.');
+              }
+            },
+          ),
+        );
         insertedWhoToFollow = true;
       }
+
       final post = posts[index];
-      children.add(InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PostStatsScreen(post: post), // Navigate to your new screen
-            ),
-          );
-        },
-         child: ActivityPostCard(
-          post: post,
-          onAvatarTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => UserProfileScreen(name: post.userName),
-            ),
+      children.add(
+        InkWell(
+          onTap: () => controller.selectPost(post),
+          child: ActivityPostCard(
+            post: post,
+            onLikeTap: () async {
+              final success = await controller.likePost(post);
+              if (!success && context.mounted) {
+                _showSnack(context, 'Unable to like this activity right now.');
+              }
+            },
+            onCommentTap: () =>
+                _showSnack(context, 'Comments are coming soon.'),
+            onShareTap: () => _showSnack(context, 'Share is coming soon.'),
           ),
         ),
-      ));
+      );
     }
 
-    if (showWhoToFollow && !insertedWhoToFollow) {
-      children.add(const WhoToFollowSection());
+    if (!insertedWhoToFollow) {
+      children.add(
+        WhoToFollowSection(
+          suggestions: controller.suggestions,
+          errorMessage: controller.suggestionsErrorMessage,
+          isFollowing: controller.isFollowing,
+          onFollowTap: (suggestion) async {
+            final success = await controller.followSuggestion(suggestion);
+            if (!success && context.mounted) {
+              _showSnack(context, 'Unable to follow user right now.');
+            }
+          },
+        ),
+      );
     }
 
     return SliverList(delegate: SliverChildListDelegate(children));
   }
-}
 
-// ─── BLE connect card ─────────────────────────────────────────────────────────
-class _BleConnectCard extends StatelessWidget {
-  const _BleConnectCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.bluetooth, color: Colors.blue, size: 28),
-          ),
-          const SizedBox(width: 16),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Connect to Gondolier',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Sync your latest rowing session',
-                  style: TextStyle(color: Colors.grey, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            ),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const BleScanScreen()),
-            ),
-            child: const Text('Connect'),
-          ),
-        ],
-      ),
-    );
+  static void _showSnack(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
-// ─── Header ───────────────────────────────────────────────────────────────────
-class _MainHeader extends StatefulWidget {
-  final ValueChanged<int> onTabChanged;
-  const _MainHeader({required this.onTabChanged});
+class _MainHeader extends StatelessWidget {
+  const _MainHeader({
+    required this.selectedScope,
+    required this.onScopeSelected,
+  });
 
-  @override
-  State<_MainHeader> createState() => _MainHeaderState();
-}
-
-class _MainHeaderState extends State<_MainHeader> {
-  bool _notificationsOn = true;
+  final FeedScope selectedScope;
+  final Future<void> Function(FeedScope scope) onScopeSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -358,54 +173,35 @@ class _MainHeaderState extends State<_MainHeader> {
                 child: Image.asset('assets/img/logo-gondolier.png'),
               ),
               Row(
-                children: [
-                  const Text(
+                children: const [
+                  Text(
                     'Home',
                     style: TextStyle(
                       color: Colors.red,
                       fontWeight: FontWeight.bold,
-                      fontSize: 22,
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    icon: Icon(
-                      _notificationsOn
-                          ? Icons.notifications
-                          : Icons.notifications_off_outlined,
-                      color: Colors.red,
-                    ),
-                    onPressed: () {
-                      setState(() => _notificationsOn = !_notificationsOn);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            _notificationsOn
-                                ? 'Notifications on'
-                                : 'Notifications off',
-                          ),
-                          duration: const Duration(seconds: 2),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                  ),
+                  SizedBox(width: 15),
+                  Icon(Icons.notifications_none, color: Colors.red),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 20),
-          FilterTabs(onTabChanged: widget.onTabChanged),
+          FilterTabs(
+            selectedScope: selectedScope,
+            onScopeSelected: (scope) => onScopeSelected(scope),
+          ),
         ],
       ),
     );
   }
 }
 
-// ─── Error / empty states ─────────────────────────────────────────────────────
 class _FeedErrorState extends StatelessWidget {
-  final VoidCallback onRetry;
   const _FeedErrorState({required this.onRetry});
+
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {

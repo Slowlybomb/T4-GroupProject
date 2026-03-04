@@ -4,7 +4,10 @@ import 'package:gondolier/app/shell/main_navigation_shell.dart';
 import 'package:gondolier/features/activity_detail/view/detail_screen.dart';
 import 'package:gondolier/features/feed/controller/feed_controller.dart';
 import 'package:gondolier/features/feed/data/feed_repository.dart';
+import 'package:gondolier/features/feed/domain/models/feed_scope.dart';
+import 'package:gondolier/features/feed/domain/models/follow_suggestion.dart';
 import 'package:gondolier/features/feed/domain/models/post.dart';
+import 'package:gondolier/features/feed/domain/models/weekly_summary.dart';
 import 'package:provider/provider.dart';
 
 import 'support/fake_auth_repository.dart';
@@ -15,11 +18,41 @@ class _StubFeedRepository implements FeedRepository {
   const _StubFeedRepository(this._posts);
 
   @override
-  Future<List<Post>> getPosts() async => _posts;
+  Future<List<Post>> getPosts({FeedScope scope = FeedScope.following}) async =>
+      _posts;
+
+  @override
+  Future<WeeklySummary> getWeeklySummary({
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    return WeeklySummary(
+      from: from,
+      to: to,
+      totalActivities: _posts.length,
+      totalDistanceKm: 10,
+    );
+  }
+
+  @override
+  Future<List<FollowSuggestion>> getFollowSuggestions({int limit = 5}) async {
+    return const [];
+  }
+
+  @override
+  Future<void> followUser(String userId) async {}
+
+  @override
+  Future<Post> likePost(String postId) async {
+    final post = _posts.firstWhere((candidate) => candidate.id == postId);
+    return post.copyWith(likes: post.likes + 1);
+  }
 }
 
 const _stubPosts = <Post>[
   Post(
+    id: 'post-1',
+    userId: 'user-1',
     userName: 'Hugo',
     timestamp: '22 Jan 2026 - Cork',
     title: 'Hard session on the ergometer today!',
@@ -30,6 +63,8 @@ const _stubPosts = <Post>[
     likes: 12,
   ),
   Post(
+    id: 'post-2',
+    userId: 'user-2',
     userName: 'Sarah',
     timestamp: '22 Jan 2026 - Cork',
     title: 'Morning 5k piece, feeling strong.',

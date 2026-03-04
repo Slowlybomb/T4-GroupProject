@@ -214,6 +214,90 @@ func TestScanActivityPropagatesScanError(t *testing.T) {
 	}
 }
 
+func TestParseFeedScope(t *testing.T) {
+	cases := []struct {
+		name   string
+		raw    string
+		want   FeedScope
+		wantOK bool
+	}{
+		{name: "default empty", raw: "", want: feedScopeFollowing, wantOK: true},
+		{name: "following", raw: "following", want: feedScopeFollowing, wantOK: true},
+		{name: "global", raw: "global", want: feedScopeGlobal, wantOK: true},
+		{name: "friends", raw: "friends", want: feedScopeFriends, wantOK: true},
+		{name: "invalid", raw: "unknown", want: "", wantOK: false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := parseFeedScope(tc.raw)
+			if ok != tc.wantOK {
+				t.Fatalf("expected ok=%v, got %v", tc.wantOK, ok)
+			}
+			if got != tc.want {
+				t.Fatalf("expected scope=%q, got %q", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestParseSuggestionsLimit(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		limit, ok := parseSuggestionsLimit("")
+		if !ok {
+			t.Fatal("expected default limit to be valid")
+		}
+		if limit != defaultSuggestionsLimit {
+			t.Fatalf("expected default limit %d, got %d", defaultSuggestionsLimit, limit)
+		}
+	})
+
+	t.Run("clamp max", func(t *testing.T) {
+		limit, ok := parseSuggestionsLimit("100")
+		if !ok {
+			t.Fatal("expected value to be valid")
+		}
+		if limit != maxSuggestionsLimit {
+			t.Fatalf("expected max limit %d, got %d", maxSuggestionsLimit, limit)
+		}
+	})
+
+	t.Run("reject invalid", func(t *testing.T) {
+		if _, ok := parseSuggestionsLimit("abc"); ok {
+			t.Fatal("expected invalid limit")
+		}
+	})
+}
+
+func TestActivitiesQueryForScope(t *testing.T) {
+	cases := []struct {
+		scope   FeedScope
+		want    string
+		wantErr bool
+	}{
+		{scope: feedScopeFollowing, want: listActivitiesFollowingQuery},
+		{scope: feedScopeGlobal, want: listActivitiesGlobalQuery},
+		{scope: feedScopeFriends, want: listActivitiesFriendsQuery},
+		{scope: FeedScope("nope"), wantErr: true},
+	}
+
+	for _, tc := range cases {
+		got, err := activitiesQueryForScope(tc.scope)
+		if tc.wantErr {
+			if err == nil {
+				t.Fatalf("expected error for scope %q", tc.scope)
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got != tc.want {
+			t.Fatalf("unexpected query for scope %q", tc.scope)
+		}
+	}
+}
+
 func TestNormalizeRouteGeoJSON(t *testing.T) {
 	t.Run("accepts LineString input", func(t *testing.T) {
 		input := json.RawMessage(`{"type":"LineString","coordinates":[[-8.46,51.89],[-8.45,51.90]]}`)

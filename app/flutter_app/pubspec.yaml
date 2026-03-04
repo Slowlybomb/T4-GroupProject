@@ -16,9 +16,7 @@ dependencies:
   supabase_flutter: ^2.10.2
   flutter_blue_plus: ^1.32.12
   permission_handler: ^11.3.0
-  share_plus: ^10.0.0
-  google_maps_flutter: ^2.10.0
-  csv: ^6.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -29,4 +27,3 @@ flutter:
   assets:
     - assets/img/
     - assets/geojson/
-    - assets/rowingdata/

@@ -1,32 +1,36 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_colour_theme.dart';
+import '../domain/models/feed_scope.dart';
 
-class FilterTabs extends StatefulWidget {
-  final ValueChanged<int>? onTabChanged;
-  const FilterTabs({super.key, this.onTabChanged});
+class FilterTabs extends StatelessWidget {
+  const FilterTabs({
+    super.key,
+    required this.selectedScope,
+    required this.onScopeSelected,
+  });
 
-  @override
-  State<FilterTabs> createState() => _FilterTabsState();
-}
+  final FeedScope selectedScope;
+  final ValueChanged<FeedScope> onScopeSelected;
 
-class _FilterTabsState extends State<FilterTabs> {
-  int _selectedTab = 0;
-  final List<String> _tabs = ["Following", "Discover", "Your Posts"];
+  static const List<FeedScope> _tabs = [
+    FeedScope.following,
+    FeedScope.global,
+    FeedScope.friends,
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(_tabs.length, (index) {
-        final isSelected = _selectedTab == index;
+        final tab = _tabs[index];
+        final isSelected = selectedScope == tab;
         return GestureDetector(
-          onTap: () {
-            setState(() => _selectedTab = index);
-            widget.onTabChanged?.call(index);
-          },
+          onTap: () => onScopeSelected(tab),
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 5),
-            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: isSelected ? AppColors.primaryRed : Colors.transparent,
               borderRadius: BorderRadius.circular(20),
@@ -35,7 +39,7 @@ class _FilterTabsState extends State<FilterTabs> {
                   : Border.all(color: Colors.grey.shade300),
             ),
             child: Text(
-              _tabs[index],
+              tab.label,
               style: TextStyle(
                 color: isSelected ? Colors.white : Colors.grey,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,

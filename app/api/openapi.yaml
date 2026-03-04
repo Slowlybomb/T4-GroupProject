@@ -23,9 +23,10 @@ servers:
 tags:
   - name: health
   - name: users
+  - name: activities
+  - name: follows
   - name: workouts
   - name: sessions
-  - name: feed
   - name: metrics
   - name: files
   - name: realtime
@@ -60,6 +61,143 @@ paths:
                 $ref: "#/components/schemas/UserResponse"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+
+  /api/v1/activities:
+    get:
+      tags: [activities]
+      summary: List feed activities visible to the authenticated user
+      operationId: listActivities
+      parameters:
+        - $ref: "#/components/parameters/activityScope"
+      responses:
+        "200":
+          description: Activity list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Workout"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+    post:
+      tags: [activities]
+      summary: Create an activity
+      operationId: createActivity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWorkoutRequest"
+      responses:
+        "201":
+          description: Activity created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workout"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/activities/{activity_id}:
+    get:
+      tags: [activities]
+      summary: Get activity by ID
+      operationId: getActivityById
+      parameters:
+        - $ref: "#/components/parameters/activityId"
+      responses:
+        "200":
+          description: Activity details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workout"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+  /api/v1/activities/{activity_id}/like:
+    patch:
+      tags: [activities]
+      summary: Like an activity
+      operationId: likeActivity
+      parameters:
+        - $ref: "#/components/parameters/activityId"
+      responses:
+        "200":
+          description: Updated activity with latest like count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workout"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+  /api/v1/follows/suggestions:
+    get:
+      tags: [follows]
+      summary: List follow suggestions
+      operationId: listFollowSuggestions
+      parameters:
+        - $ref: "#/components/parameters/suggestionsLimit"
+      responses:
+        "200":
+          description: Follow suggestions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowSuggestionsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /api/v1/follows/{user_id}:
+    put:
+      tags: [follows]
+      summary: Follow a user (idempotent)
+      operationId: followUser
+      parameters:
+        - $ref: "#/components/parameters/userIdPath"
+      responses:
+        "204":
+          description: Follow applied
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+    delete:
+      tags: [follows]
+      summary: Unfollow a user (idempotent)
+      operationId: unfollowUser
+      parameters:
+        - $ref: "#/components/parameters/userIdPath"
+      responses:
+        "204":
+          description: Unfollow applied
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
 
   /api/v1/workouts:
     get:
@@ -268,24 +406,6 @@ paths:
         "422":
           $ref: "#/components/responses/ValidationError"
 
-  /api/v1/feed:
-    get:
-      tags: [feed]
-      summary: Get social feed
-      operationId: getFeed
-      parameters:
-        - $ref: "#/components/parameters/limit"
-        - $ref: "#/components/parameters/cursor"
-      responses:
-        "200":
-          description: Feed page
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/FeedResponse"
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-
   /api/v1/metrics/summary:
     get:
       tags: [metrics]
@@ -400,6 +520,20 @@ components:
       bearerFormat: JWT
 
   parameters:
+    activityId:
+      name: activity_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    userIdPath:
+      name: user_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     workoutId:
       name: workout_id
       in: path
@@ -429,6 +563,23 @@ components:
       required: false
       schema:
         type: string
+    activityScope:
+      name: scope
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [following, global, friends]
+        default: following
+    suggestionsLimit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 20
+        default: 5
     fromTimestamp:
       name: from
       in: query
@@ -864,26 +1015,38 @@ components:
           type: integer
           minimum: 0
 
-    FeedItem:
+    FollowSuggestion:
       type: object
-      required: [workout, actor]
+      required: [id, username, created_at]
       properties:
-        workout:
-          $ref: "#/components/schemas/Workout"
-        actor:
-          $ref: "#/components/schemas/Profile"
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        display_name:
+          type: string
+          nullable: true
+        avatar_url:
+          type: string
+          format: uri
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        last_public_activity:
+          type: string
+          format: date-time
+          nullable: true
 
-    FeedResponse:
+    FollowSuggestionsResponse:
       type: object
       required: [items]
       properties:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/FeedItem"
-        next_cursor:
-          type: string
-          nullable: true
+            $ref: "#/components/schemas/FollowSuggestion"
 
     MetricsSummaryResponse:
       type: object

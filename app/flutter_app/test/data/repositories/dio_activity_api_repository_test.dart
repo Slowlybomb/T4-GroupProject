@@ -108,6 +108,7 @@ void main() {
         adapter.requests.first.headers['Authorization'],
         'Bearer valid-token',
       );
+      expect(adapter.requests.first.queryParameters['scope'], 'following');
 
       final createRequest = adapter.requests[1];
       expect(createRequest.method, 'POST');
@@ -207,5 +208,64 @@ void main() {
         'explicit',
       );
     });
+
+    test(
+      'supports follow suggestions, follow/unfollow and metrics summary',
+      () async {
+        final adapter = FakeHttpClientAdapter({
+          'GET /api/v1/follows/suggestions': const StubResponse(
+            statusCode: 200,
+            data: {
+              'items': [
+                {
+                  'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+                  'username': 'sarah',
+                  'display_name': 'Sarah',
+                  'avatar_url': null,
+                  'last_public_activity': '2026-01-01T10:00:00Z',
+                },
+              ],
+            },
+          ),
+          'PUT /api/v1/follows/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa':
+              const StubResponse(statusCode: 204),
+          'DELETE /api/v1/follows/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa':
+              const StubResponse(statusCode: 204),
+          'GET /api/v1/metrics/summary': const StubResponse(
+            statusCode: 200,
+            data: {
+              'from': '2026-01-01T00:00:00Z',
+              'to': '2026-01-07T23:59:59Z',
+              'total_workouts': 4,
+              'total_distance_m': 12000,
+              'total_duration_seconds': 3600,
+              'avg_split_500m_seconds': 120,
+              'avg_stroke_spm': 24.5,
+            },
+          ),
+        });
+
+        final repository = _buildRepository(
+          adapter: adapter,
+          token: 'valid-token',
+        );
+
+        final suggestions = await repository.listFollowSuggestions(limit: 10);
+        await repository.followUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+        await repository.unfollowUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+        final metrics = await repository.getMetricsSummary(
+          from: DateTime.parse('2026-01-01T00:00:00Z'),
+          to: DateTime.parse('2026-01-07T23:59:59Z'),
+        );
+
+        expect(suggestions, hasLength(1));
+        expect(suggestions.first.username, 'sarah');
+        expect(metrics.totalWorkouts, 4);
+        expect(adapter.requests, hasLength(4));
+        expect(adapter.requests[0].queryParameters['limit'], 10);
+        expect(adapter.requests[3].queryParameters['from'], isNotEmpty);
+        expect(adapter.requests[3].queryParameters['to'], isNotEmpty);
+      },
+    );
   });
 }

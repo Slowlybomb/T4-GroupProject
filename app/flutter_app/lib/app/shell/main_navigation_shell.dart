@@ -20,10 +20,20 @@ class MainNavigationHub extends StatefulWidget {
 class _MainNavigationHubState extends State<MainNavigationHub> {
   int _currentIndex = 0;
 
+  void _switchToStatsTab() {
+    setState(() => _currentIndex = 1);
+  }
+
+  void _showComingSoon(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final screens = <Widget>[
-      const FeedScreen(),
+      FeedScreen(onViewProgress: _switchToStatsTab),
       UserStatsScreen(authRepository: widget.authRepository),
     ];
 
@@ -37,6 +47,21 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
                 PostDetailScreen(
                   post: feedController.selectedPost!,
                   onClose: feedController.clearSelectedPost,
+                  onLike: (post) async {
+                    final success = await feedController.likePost(post);
+                    if (!success && context.mounted) {
+                      _showComingSoon(
+                        context,
+                        'Unable to like this activity right now.',
+                      );
+                    }
+                  },
+                  onComment: () {
+                    _showComingSoon(context, 'Comments are coming soon.');
+                  },
+                  onShare: () {
+                    _showComingSoon(context, 'Share is coming soon.');
+                  },
                   onAvatarTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -66,7 +91,7 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
               BottomNavigationBarItem(
                 icon: Icon(Icons.person_outline),
                 activeIcon: Icon(Icons.person),
-                label: 'Profile',
+                label: 'Stats',
               ),
             ],
           ),

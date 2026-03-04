@@ -1,31 +1,35 @@
 import '../../core/network/api_error.dart';
 import '../models/activity_dto.dart';
 import '../models/activity_model.dart';
+import '../models/follow_suggestion_dto.dart';
+import '../models/metrics_summary_dto.dart';
 import 'activity_api_repository.dart';
 
 class FeedRepository {
-  final ActivityApiRepository _activityApiRepository;
-  final bool _useLocalFallback;
-
   FeedRepository({
     required ActivityApiRepository activityApiRepository,
     required bool useLocalFallback,
   }) : _activityApiRepository = activityApiRepository,
        _useLocalFallback = useLocalFallback;
 
-  Future<List<ActivityModel>> getFeedActivities() async {
+  final ActivityApiRepository _activityApiRepository;
+  final bool _useLocalFallback;
+
+  Future<List<ActivityModel>> getFeedActivities({required String scope}) async {
     try {
-      // Primary source: backend activities endpoint.
-      final remoteActivities = await _activityApiRepository.listActivities();
+      final remoteActivities = await _activityApiRepository.listActivities(
+        scope: scope,
+      );
       if (remoteActivities.isNotEmpty) {
         return remoteActivities.map((dto) => dto.toActivityModel()).toList();
       }
+      if (!_useLocalFallback) {
+        return const [];
+      }
 
-      // Keep the feed populated for demo/early-stage environments where the
-      // backend is reachable but currently has no activities.
       return _buildLocalFallbackFeed()
           .map((dto) => dto.toActivityModel())
-          .toList();
+          .toList(growable: false);
     } on ApiError {
       if (!_useLocalFallback) {
         rethrow;
@@ -36,15 +40,30 @@ class FeedRepository {
       }
     }
 
-    if (!_useLocalFallback) {
-      return const [];
-    }
-
-    // Optional demo/offline path when API is unavailable.
     await Future.delayed(const Duration(milliseconds: 250));
     return _buildLocalFallbackFeed()
         .map((dto) => dto.toActivityModel())
-        .toList();
+        .toList(growable: false);
+  }
+
+  Future<void> followUser(String userId) {
+    return _activityApiRepository.followUser(userId);
+  }
+
+  Future<ActivityModel> likeActivity(String id) async {
+    final dto = await _activityApiRepository.likeActivity(id);
+    return dto.toActivityModel();
+  }
+
+  Future<List<FollowSuggestionDto>> getFollowSuggestions({int limit = 5}) {
+    return _activityApiRepository.listFollowSuggestions(limit: limit);
+  }
+
+  Future<MetricsSummaryDto> getMetricsSummary({
+    required DateTime from,
+    required DateTime to,
+  }) {
+    return _activityApiRepository.getMetricsSummary(from: from, to: to);
   }
 
   List<ActivityDto> _buildLocalFallbackFeed() {

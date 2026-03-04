@@ -89,6 +89,8 @@ class ActivityDto {
   ActivityModel toActivityModel() {
     // Adapter layer: keep existing UI model stable while backend schema evolves.
     return ActivityModel(
+      id: id,
+      userId: userId,
       userName: _resolveDisplayName(
         displayName: displayName,
         username: username,
@@ -104,6 +106,8 @@ class ActivityDto {
       avgSplit: _formatAvgSplit(avgSplit500mSeconds),
       strokeRate: _formatStrokeRate(avgStrokeSpm),
       likes: likes,
+      comments: comments,
+      routeCoordinates: _extractRouteCoordinates(routeGeoJson),
     );
   }
 
@@ -221,6 +225,40 @@ class ActivityDto {
 
   static int _intOrZero(Object? value) {
     return _intOrNull(value) ?? 0;
+  }
+
+  static List<List<double>> _extractRouteCoordinates(Object? value) {
+    if (value is! Map) {
+      return const [];
+    }
+
+    final route = Map<String, dynamic>.from(value);
+    final type = route['type']?.toString().trim() ?? '';
+    if (type != 'LineString') {
+      return const [];
+    }
+
+    final rawCoordinates = route['coordinates'];
+    if (rawCoordinates is! List) {
+      return const [];
+    }
+
+    final coordinates = <List<double>>[];
+    for (final point in rawCoordinates) {
+      if (point is! List || point.length < 2) {
+        continue;
+      }
+
+      final lon = _doubleOrNull(point[0]);
+      final lat = _doubleOrNull(point[1]);
+      if (lon == null || lat == null) {
+        continue;
+      }
+
+      coordinates.add([lon, lat]);
+    }
+
+    return coordinates;
   }
 
   static String? _normalizeAvatarUrl(String? value) {
