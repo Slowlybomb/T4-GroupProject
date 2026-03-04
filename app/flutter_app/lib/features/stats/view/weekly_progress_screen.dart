@@ -26,7 +26,7 @@ class WeeklyProgressScreen extends StatelessWidget {
               title: 'This Week',
               children: [
                 _BigStat(label: 'Distance', value: '48.9 km', icon: Icons.directions_boat),
-                _BigStat(label: 'Activities', value: '4', icon: Icons.event),
+                _BigStat(label: 'Activities', value: '5', icon: Icons.event),
                 _BigStat(label: 'Time', value: '3h 22m', icon: Icons.timer),
                 _BigStat(label: 'Avg Split', value: '2:32', icon: Icons.speed),
               ],

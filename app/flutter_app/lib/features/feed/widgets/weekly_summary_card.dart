@@ -34,7 +34,7 @@ class WeeklySummaryCard extends StatelessWidget {
                 child: _SummaryStat(label: 'Distance', value: '48.9 km'),
               ),
               Expanded(
-                child: _SummaryStat(label: 'Activities', value: '4'),
+                child: _SummaryStat(label: 'Activities', value: '5'),
               ),
             ],
           ),
