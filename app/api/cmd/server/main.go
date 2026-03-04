@@ -587,10 +587,12 @@ func registerRoutes(
 				return
 			}
 
-			if len(req.RouteGeoJSON) > 0 && !json.Valid(req.RouteGeoJSON) {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "route_geojson must be valid JSON"})
+			normalizedRoute, err := normalizeRouteGeoJSON(req.RouteGeoJSON)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}
+			req.RouteGeoJSON = normalizedRoute
 
 			userID, ok := authUserID(c)
 			if !ok {
@@ -1339,6 +1341,154 @@ func extractBearerToken(header string) (string, bool) {
 	}
 
 	return token, true
+}
+
+func normalizeRouteGeoJSON(raw json.RawMessage) (json.RawMessage, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	if !json.Valid(raw) {
+		return nil, errors.New("route_geojson must be valid JSON")
+	}
+
+	var payload any
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, errors.New("route_geojson must be valid JSON")
+	}
+
+	root, ok := payload.(map[string]any)
+	if !ok {
+		return nil, errors.New("route_geojson must be a JSON object")
+	}
+
+	coordinatesRaw, ok := extractLineStringCoordinates(root)
+	if !ok {
+		return nil, errors.New("route_geojson must contain a LineString geometry")
+	}
+
+	coordinates, err := normalizeLineStringCoordinates(coordinatesRaw)
+	if err != nil {
+		return nil, err
+	}
+
+	normalized, err := json.Marshal(map[string]any{
+		"type":        "LineString",
+		"coordinates": coordinates,
+	})
+	if err != nil {
+		return nil, errors.New("failed to normalize route_geojson")
+	}
+
+	return normalized, nil
+}
+
+func extractLineStringCoordinates(node map[string]any) (any, bool) {
+	typeName, _ := node["type"].(string)
+
+	switch strings.TrimSpace(typeName) {
+	case "LineString":
+		coordinates, ok := node["coordinates"]
+		return coordinates, ok
+	case "Feature":
+		geometry, ok := node["geometry"].(map[string]any)
+		if !ok || geometry == nil {
+			return nil, false
+		}
+		return extractLineStringCoordinates(geometry)
+	case "FeatureCollection":
+		features, ok := node["features"].([]any)
+		if !ok {
+			return nil, false
+		}
+		for _, rawFeature := range features {
+			feature, ok := rawFeature.(map[string]any)
+			if !ok || feature == nil {
+				continue
+			}
+			geometry, ok := feature["geometry"].(map[string]any)
+			if !ok || geometry == nil {
+				continue
+			}
+			if coordinates, ok := extractLineStringCoordinates(geometry); ok {
+				return coordinates, true
+			}
+		}
+		return nil, false
+	default:
+		return nil, false
+	}
+}
+
+func normalizeLineStringCoordinates(raw any) ([][]float64, error) {
+	points, ok := raw.([]any)
+	if !ok || len(points) == 0 {
+		return nil, errors.New("route_geojson LineString coordinates must be a non-empty array")
+	}
+
+	normalized := make([][]float64, 0, len(points))
+	for i, rawPoint := range points {
+		point, ok := rawPoint.([]any)
+		if !ok || len(point) < 2 {
+			return nil, fmt.Errorf("route_geojson coordinate at index %d must have [longitude, latitude]", i)
+		}
+
+		lon, ok := asFloat64(point[0])
+		if !ok {
+			return nil, fmt.Errorf("route_geojson longitude at index %d must be a number", i)
+		}
+		lat, ok := asFloat64(point[1])
+		if !ok {
+			return nil, fmt.Errorf("route_geojson latitude at index %d must be a number", i)
+		}
+
+		if lon < -180 || lon > 180 {
+			return nil, fmt.Errorf("route_geojson longitude at index %d must be between -180 and 180", i)
+		}
+		if lat < -90 || lat > 90 {
+			return nil, fmt.Errorf("route_geojson latitude at index %d must be between -90 and 90", i)
+		}
+
+		normalized = append(normalized, []float64{lon, lat})
+	}
+
+	return normalized, nil
+}
+
+func asFloat64(raw any) (float64, bool) {
+	switch v := raw.(type) {
+	case float64:
+		return v, true
+	case float32:
+		return float64(v), true
+	case int:
+		return float64(v), true
+	case int8:
+		return float64(v), true
+	case int16:
+		return float64(v), true
+	case int32:
+		return float64(v), true
+	case int64:
+		return float64(v), true
+	case uint:
+		return float64(v), true
+	case uint8:
+		return float64(v), true
+	case uint16:
+		return float64(v), true
+	case uint32:
+		return float64(v), true
+	case uint64:
+		return float64(v), true
+	case json.Number:
+		value, err := v.Float64()
+		if err != nil {
+			return 0, false
+		}
+		return value, true
+	default:
+		return 0, false
+	}
 }
 
 func parseActivityID(raw string) (string, bool) {
