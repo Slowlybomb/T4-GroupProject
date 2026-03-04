@@ -127,7 +127,7 @@ void net_init() {
 
   BLEAdvertising* adv = BLEDevice::getAdvertising();
   adv->addServiceUUID(BLE_SERVICE_UUID);
-  adv->setScanResponse(true);
+  //adv->setScanResponse(true);
   adv->setMinPreferred(0x06);  // helps iOS connection
   BLEDevice::startAdvertising();
 
