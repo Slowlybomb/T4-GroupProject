@@ -1,3 +1,9 @@
+<script>
+MathJax = { tex: { inlineMath: [['$','$']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+
 # Gondolier
 
 ## An open source rowing monitor
@@ -61,13 +67,11 @@ The firmware organizes functionality into modules:
 The electronic assembly was straight forward, as this is only a prototype, we used dev boards where possible. For the ESP32, I used a clone of the adafruit feather TFT with an integrated accelerometer; the accelerometer communicates with the MCU using I2C. The screen was a cheap TFT breakout board which was connected using the serial peripheral interface (SPI) for communication, the entire assembly was done using a perforated prototyping board. A 3.3v compatible SD card module was connected using SPI as well and so unique “chip select” pins were assigned to each SPI module. Buttons were added for control and were wired for pullup resistors. Debouncing capacitors were used to smooth button, accelerometer and voltage across the full circuit, a CP2104 Li-Po battery management system board was connected with a battery for the duration of data collection but this was removed after for safety. 
 
 Simplified Schematic of the rowing tracker  
-<img src="Schematic.png" alt="Alt" width="300"/>
+<img src="schematic.png" alt="Simplified schematic of the rowing tracker" width="600"/>
 
 Breakout image of the electronics:
 
-<img src="electronics-blown.jpg" alt="Alt" width="300"/>
 Image of the full electronics stack:  
-<img src="electronics-stack.jpg" alt="Alt" width="300"/>
 **Design Decisions and Trade-offs**
 
 - Model size and sampling rate: We limit the input window and sampling frequency to keep RAM usage and CPU cost low. This restricts model complexity but fits TFLite Micro on the ESP32-S3.  
@@ -80,36 +84,40 @@ Image of the full electronics stack:
 - Data processing: At first, we used matplotlib to plot all three axes of the acceleration and gyroscope. This informed us very quickly that the rotational data was unnecessary so we immediately removed it. Looking at the acceleration data, the x axis was just complete noise, the y axis showed a small semblance of rowing strokes and the z axis showed clear rowing stroke, this made a lot of sense, the accelerometer was mounted in a way that its z axis was pointing in the direction of the boats motion, it was tilted up slights so the screen was visible to Sally and so some of the motion was also present in the y axis, the x axis was positioned perpendicular to the motion of the boat so the only acceleration in that axis was the wobbling of the boat due to waves and instability.
 
 Unprocessed z axis accelerometer data  
-<img src="graph1.png" alt="Alt" width="300"/>
+<img src="graph1.png" alt="Unprocessed z axis accelerometer data" width="700"/>
 Because we knew that rowers would want to tilt the device at different angles so they could view the screen in boats with different designs, we had to process the data in a way that would be totally agnostic to device orientation. To achieve this, we used simple trigonometry. Obtaining the magnitude of the Y and Z axes, where the data is present, turned it into a vector of acceleration that would not change depending on orientation. 
 
 $$
-\vec{v} = \sqrt{\vec{r}^2 + Z^2}
+\vec{v} = \sqrt{Y^2 + Z^2}
 $$
 
 As is clearly visible in the image below, the noise from the accelerometer is very high, despite having a clear signal, it is very messy data, the next step was to pass it through a low pass filter to cut out the high frequency noise, a simple 100 sample window rolling average was used
 
-	m \[n\] \= 150k=049Y\[n-k\]2+Z\[n-k\]2
+$$
+\bar{m}[n] = \frac{1}{50} \sum_{k=0}^{49} \sqrt{Y[n-k]^2 + Z[n-k]^2}
+$$
 
-	Noise signal before rolling average  
-<img src="graph3.png" alt="Alt" width="300"/>
+Noise signal before rolling average  
+<img src="graph3.png" alt="Noise signal before rolling average" width="700"/>
 Blue line inside orange shows the processed signal compared to orange noisy signal  
-<img src="graph4.png" alt="Alt" width="300"/>
+<img src="graph4.png" alt="Blue line inside orange shows the processed signal compared to orange noisy signal" width="700"/>
 Lastly to remove gravitation anomalies, another rolling average was done but with a sample window size of 500, this acted as a high pass filter allowing the stroke data to pass through but not changes in the tilt of the boat
 
-m\[n\] \= 1500 i=0499150  k=049y\[n-i-k\]2+z\[n-i-k\]2
+$$
+\bar{m}[n] = \frac{1}{500} \sum_{i=0}^{499} \frac{1}{50} \sum_{k=0}^{49} \sqrt{y[n-i-k]^2 + z[n-i-k]^2}
+$$
 
 30 seconds of processed data showing 9 strokes  
-<img src="graph5.png" alt="Alt" width="300"/>
+<img src="graph5.png" alt="30 seconds of processed data showing 9 strokes" width="700"/>
 
 - Creating stroke and non stroke training windows: Now that the data is cleaned and processed we had to decide how to best package the data to feed into the neural network, we tried a variety of methods for this, where we struggled was finding non stroke data, typically once on the water, Sally will row stroke after stroke until she is done with little rest time so to get non stroke data is very difficult, i created a python script that looked for peaks over a certain height, it labelled these peaks and then created windows across the whole dataset, overlapping with an offset of 1 second, the % of the stroke in each window was labelled based on where in the stroke the spike occurred and then a graph of each stroke was presented by the code to be manually approved or rejected, all windows that had less than 70% of a stroke as labelled as not a stroke. In the end, 400 windows were given to the model to train on, 300 stroke windows and 100 non stroke windows. This was a smaller dataset than we had wanted to work on but it still functioned well. This was the 8th different way we tried to window the data, it was difficult and involved a lot of trial and error and any attempt to use AI on this task threw us awry as this has never been attempted before publicly so there is no data online  
     
     
     
   Manual review of stroke data  
-<img src="graph6.png" alt="Alt" width="300"/>
+<img src="graph6.png" alt="Manual review of stroke data" width="700"/>
   Automated review of stroke data of entire 40 rowing session  
-<img src="graph7.png" alt="Alt" width="300"/>
+<img src="graph7.png" alt="Automated review of stroke data of entire 40 rowing session" width="700"/>
 
 **Data Flow and Algorithms**
 
