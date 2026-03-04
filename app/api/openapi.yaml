@@ -742,29 +742,16 @@ components:
 
     SessionSample:
       type: object
-      required: [t_offset_ms]
+      required: [stroke_timestamp_ms, distance_m]
       properties:
-        t_offset_ms:
+        stroke_timestamp_ms:
           type: integer
+          format: int64
           minimum: 0
-        pace_500m_seconds:
-          type: integer
-          minimum: 0
-          nullable: true
-        speed_mps:
+        distance_m:
           type: number
-          format: float
+          format: double
           minimum: 0
-          nullable: true
-        stroke_spm:
-          type: integer
-          minimum: 0
-          nullable: true
-        accuracy_m:
-          type: number
-          format: float
-          minimum: 0
-          nullable: true
 
     UpsertSessionSamplesRequest:
       type: object

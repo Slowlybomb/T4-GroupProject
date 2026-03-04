@@ -85,28 +85,101 @@ alter table public.activities
   add constraint activities_team_id_only_for_team_visibility
   check (visibility = 'team' or team_id is null);
 
--- 3.1) ACTIVITY SAMPLES (time-series: speed + strokes per minute)
--- One row = measurements at a moment in the session.
--- Use offset since activity start. Clean ordering, easy charts.
+-- 3.1) ACTIVITY SAMPLES (raw stroke events)
+-- One row = one stroke timestamp and cumulative distance.
 create table if not exists public.activity_samples (
   activity_id uuid not null references public.activities(id) on delete cascade,
-  t_offset_ms int not null check (t_offset_ms >= 0),
-
-  -- metrics
-  pace_500m_seconds int check (pace_500m_seconds is null or pace_500m_seconds >= 0),
-  speed_mps real check (speed_mps is null or speed_mps >= 0),
-  stroke_spm smallint check (stroke_spm is null or stroke_spm >= 0),
-
-  -- optional sensor quality fields (keep now or remove)
-  accuracy_m real check (accuracy_m is null or accuracy_m >= 0),
+  stroke_timestamp_ms bigint not null check (stroke_timestamp_ms >= 0),
+  distance_m double precision not null check (distance_m >= 0),
 
   created_at timestamptz not null default now(),
 
-  primary key (activity_id, t_offset_ms)
+  primary key (activity_id, stroke_timestamp_ms)
 );
 
--- PK already supports (activity_id, time) reads efficiently.
--- Extra index usually not needed unless you add other query patterns.
+-- Derive activity-level aggregates directly from raw stroke samples.
+create or replace function public.recompute_activity_metrics_from_samples(p_activity_id uuid)
+returns void
+language plpgsql
+as $$
+declare
+  v_min_ts bigint;
+  v_max_ts bigint;
+  v_stroke_count integer;
+  v_distance_m double precision;
+  v_elapsed_ms bigint;
+  v_duration_seconds integer;
+  v_avg_split_500m_seconds integer;
+  v_avg_stroke_spm smallint;
+begin
+  select
+    min(stroke_timestamp_ms),
+    max(stroke_timestamp_ms),
+    count(*)::int,
+    max(distance_m)
+  into
+    v_min_ts,
+    v_max_ts,
+    v_stroke_count,
+    v_distance_m
+  from public.activity_samples
+  where activity_id = p_activity_id;
+
+  v_elapsed_ms := null;
+  v_duration_seconds := null;
+  v_avg_split_500m_seconds := null;
+  v_avg_stroke_spm := null;
+
+  if v_stroke_count >= 2 and v_min_ts is not null and v_max_ts is not null then
+    v_elapsed_ms := greatest(v_max_ts - v_min_ts, 0);
+    v_duration_seconds := round(v_elapsed_ms::numeric / 1000.0)::int;
+
+    if v_elapsed_ms > 0 then
+      v_avg_stroke_spm := least(
+        round(((v_stroke_count - 1)::numeric * 60000.0) / v_elapsed_ms)::int,
+        32767
+      )::smallint;
+    end if;
+  end if;
+
+  if v_elapsed_ms is not null and v_elapsed_ms > 0 and v_distance_m is not null and v_distance_m > 0 then
+    v_avg_split_500m_seconds := round(((v_elapsed_ms::numeric / 1000.0) * 500.0) / v_distance_m)::int;
+  end if;
+
+  update public.activities
+  set
+    duration_seconds = v_duration_seconds,
+    distance_m = v_distance_m,
+    avg_split_500m_seconds = v_avg_split_500m_seconds,
+    avg_stroke_spm = v_avg_stroke_spm
+  where id = p_activity_id;
+end;
+$$;
+
+create or replace function public.activity_samples_refresh_activity_metrics()
+returns trigger
+language plpgsql
+as $$
+begin
+  if tg_op = 'DELETE' then
+    perform public.recompute_activity_metrics_from_samples(old.activity_id);
+    return old;
+  end if;
+
+  perform public.recompute_activity_metrics_from_samples(new.activity_id);
+
+  if tg_op = 'UPDATE' and old.activity_id is distinct from new.activity_id then
+    perform public.recompute_activity_metrics_from_samples(old.activity_id);
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_activity_samples_refresh_activity_metrics on public.activity_samples;
+create trigger trg_activity_samples_refresh_activity_metrics
+after insert or update or delete on public.activity_samples
+for each row execute function public.activity_samples_refresh_activity_metrics();
 
 -- 4) FOLLOWS
 create table if not exists public.follows (
