@@ -7,9 +7,51 @@ import '../widgets/activity_post_card.dart';
 import '../widgets/filter_tabs.dart';
 import '../widgets/weekly_summary_card.dart';
 import '../widgets/who_to_follow_section.dart';
+import '../../ble/view/ble_session_screen.dart';
 
-class FeedScreen extends StatelessWidget {
+// ─── Hardcoded "Your Posts" data ─────────────────────────────────────────────
+const _kYourPosts = [
+  Post(
+    userName: 'You',
+    timestamp: '2 days ago',
+    title: 'Morning row on the Liffey',
+    distance: '8.4 km',
+    duration: '42:15',
+    avgSplit: '2:31',
+    strokeRate: '22 spm',
+    likes: 14,
+  ),
+  Post(
+    userName: 'You',
+    timestamp: '5 days ago',
+    title: 'Evening session',
+    distance: '5.2 km',
+    duration: '27:40',
+    avgSplit: '2:39',
+    strokeRate: '20 spm',
+    likes: 8,
+  ),
+  Post(
+    userName: 'You',
+    timestamp: '1 week ago',
+    title: 'Long distance training',
+    distance: '14.1 km',
+    duration: '1:12:08',
+    avgSplit: '2:33',
+    strokeRate: '21 spm',
+    likes: 31,
+  ),
+];
+
+class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
+
+  @override
+  State<FeedScreen> createState() => _FeedScreenState();
+}
+
+class _FeedScreenState extends State<FeedScreen> {
+  int _selectedTab = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -17,43 +59,46 @@ class FeedScreen extends StatelessWidget {
       backgroundColor: const Color(0xFFF5F5F5),
       body: Consumer<FeedController>(
         builder: (context, controller, child) {
-          // Build the static header first; dynamic content sliver is appended below.
           final slivers = <Widget>[
-            const SliverToBoxAdapter(child: _MainHeader()),
-            const SliverToBoxAdapter(child: WeeklySummaryCard()),
+            SliverToBoxAdapter(
+              child: _MainHeader(onTabChanged: (i) => setState(() => _selectedTab = i)),
+            ),
           ];
 
-          // Keep previous UX semantics: spinner/error/empty only fill when no data.
-          if (controller.isLoading && controller.posts.isEmpty) {
-            slivers.add(
-              const SliverFillRemaining(
+          if (_selectedTab == 2) {
+            // ── Your Posts tab ────────────────────────────────────────────
+            slivers.add(const SliverToBoxAdapter(child: _BleConnectCard()));
+            slivers.add(SliverList(
+              delegate: SliverChildListDelegate(
+                _kYourPosts
+                    .map((p) => ActivityPostCard(post: p))
+                    .toList(),
+              ),
+            ));
+          } else {
+            // ── Following / Discover tabs ─────────────────────────────────
+            slivers.add(const SliverToBoxAdapter(child: WeeklySummaryCard()));
+
+            if (controller.isLoading && controller.posts.isEmpty) {
+              slivers.add(const SliverFillRemaining(
                 hasScrollBody: false,
                 child: Center(child: CircularProgressIndicator()),
-              ),
-            );
-          } else if (controller.errorMessage != null &&
-              controller.posts.isEmpty) {
-            slivers.add(
-              SliverFillRemaining(
+              ));
+            } else if (controller.errorMessage != null && controller.posts.isEmpty) {
+              slivers.add(SliverFillRemaining(
                 hasScrollBody: false,
                 child: _FeedErrorState(onRetry: controller.loadPosts),
-              ),
-            );
-          } else {
-            if (controller.posts.isEmpty) {
-              slivers.add(
-                const SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: _FeedEmptyState(),
-                ),
-              );
+              ));
+            } else if (controller.posts.isEmpty) {
+              slivers.add(const SliverFillRemaining(
+                hasScrollBody: false,
+                child: _FeedEmptyState(),
+              ));
             } else {
-              slivers.add(
-                _buildFeedContent(
-                  posts: controller.posts,
-                  onPostTap: controller.selectPost,
-                ),
-              );
+              slivers.add(_buildFeedContent(
+                posts: controller.posts,
+                onPostTap: controller.selectPost,
+              ));
             }
           }
 
@@ -71,31 +116,96 @@ class FeedScreen extends StatelessWidget {
     var insertedWhoToFollow = false;
 
     for (var index = 0; index < posts.length; index++) {
-      // Preserve existing design where suggestions are injected after 2 posts.
       if (index == 2) {
         children.add(const WhoToFollowSection());
         insertedWhoToFollow = true;
       }
-
       final post = posts[index];
-      children.add(
-        InkWell(
-          onTap: () => onPostTap(post),
-          child: ActivityPostCard(post: post),
-        ),
-      );
+      children.add(InkWell(
+        onTap: () => onPostTap(post),
+        child: ActivityPostCard(post: post),
+      ));
     }
 
-    if (!insertedWhoToFollow) {
-      children.add(const WhoToFollowSection());
-    }
+    if (!insertedWhoToFollow) children.add(const WhoToFollowSection());
 
     return SliverList(delegate: SliverChildListDelegate(children));
   }
 }
 
+// ─── BLE connect card ─────────────────────────────────────────────────────────
+class _BleConnectCard extends StatelessWidget {
+  const _BleConnectCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.bluetooth, color: Colors.blue, size: 28),
+          ),
+          const SizedBox(width: 16),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Connect to Gondolier',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Sync your latest rowing session',
+                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const BleScanScreen()),
+            ),
+            child: const Text('Connect'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Header ───────────────────────────────────────────────────────────────────
 class _MainHeader extends StatelessWidget {
-  const _MainHeader();
+  final ValueChanged<int> onTabChanged;
+  const _MainHeader({required this.onTabChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -127,16 +237,16 @@ class _MainHeader extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          const FilterTabs(),
+          FilterTabs(onTabChanged: onTabChanged),
         ],
       ),
     );
   }
 }
 
+// ─── Error / empty states ─────────────────────────────────────────────────────
 class _FeedErrorState extends StatelessWidget {
   final VoidCallback onRetry;
-
   const _FeedErrorState({required this.onRetry});
 
   @override

@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colour_theme.dart';
 
 class FilterTabs extends StatefulWidget {
-  const FilterTabs({super.key});
+  final ValueChanged<int>? onTabChanged;
+  const FilterTabs({super.key, this.onTabChanged});
 
   @override
   State<FilterTabs> createState() => _FilterTabsState();
@@ -10,7 +11,7 @@ class FilterTabs extends StatefulWidget {
 
 class _FilterTabsState extends State<FilterTabs> {
   int _selectedTab = 0;
-  final List<String> _tabs = ["Following", "Global", "Friends"];
+  final List<String> _tabs = ["Following", "Discover", "Your Posts"];
 
   @override
   Widget build(BuildContext context) {
@@ -19,10 +20,13 @@ class _FilterTabsState extends State<FilterTabs> {
       children: List.generate(_tabs.length, (index) {
         final isSelected = _selectedTab == index;
         return GestureDetector(
-          onTap: () => setState(() => _selectedTab = index),
+          onTap: () {
+            setState(() => _selectedTab = index);
+            widget.onTabChanged?.call(index);
+          },
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 5),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
             decoration: BoxDecoration(
               color: isSelected ? AppColors.primaryRed : Colors.transparent,
               borderRadius: BorderRadius.circular(20),
