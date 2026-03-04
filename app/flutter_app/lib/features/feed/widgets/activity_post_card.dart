@@ -168,6 +168,24 @@ class _RoutePolylinePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _RoutePolylinePainter oldDelegate) {
     return oldDelegate.routePoints != routePoints;
+          const SizedBox(height: 15),
+          // Replaced placeholder with the hardcoded map
+          const ClipRRect(
+            borderRadius: BorderRadius.all(Radius.circular(16)),
+            child: SizedBox(
+              height: 180,
+              width: double.infinity,
+              child: StaticRowingMap(),
+            ),
+          ),
+          const SizedBox(height: 15),
+          Padding(
+  padding: const EdgeInsets.only(top: 15), 
+  child: PostActions(likes: post.likes , post: post),
+)
+        ],
+      ),
+    );
   }
 }
 

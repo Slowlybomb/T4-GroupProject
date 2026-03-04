@@ -93,26 +93,38 @@ class _FollowerCardState extends State<_FollowerCard> {
         ),
         child: Column(
           children: [
-            GestureDetector(
-              onTap: () => _openProfile(context),
-              child: const CircleAvatar(backgroundColor: Colors.grey, radius: 25),
-            ),
+            const CircleAvatar(backgroundColor: Colors.grey, radius: 25),
             const SizedBox(height: 10),
             Text(
-              name,
+              widget.name,
               style: const TextStyle(fontWeight: FontWeight.bold),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             const Spacer(),
-            ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryRed,
-                shape: const StadiumBorder(),
-                minimumSize: const Size(double.infinity, 30),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _following = !_following),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: _following ? Colors.transparent : AppColors.primaryRed,
+                  borderRadius: BorderRadius.circular(30),
+                  border: _following
+                      ? Border.all(color: Colors.grey.shade400)
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _following ? 'Unfollow' : 'Follow',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: _following ? Colors.grey.shade600 : Colors.white,
+                  ),
+                ),
               ),
-              child: const Text("Follow", style: TextStyle(fontSize: 12)),
             ),
           ],
         ),

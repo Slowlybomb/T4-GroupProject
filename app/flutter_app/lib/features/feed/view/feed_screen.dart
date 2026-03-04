@@ -164,15 +164,34 @@ class _FeedScreenState extends State<FeedScreen> {
     var insertedWhoToFollow = false;
 
     for (var index = 0; index < posts.length; index++) {
-      if (index == 2) {
-        children.add(const WhoToFollowSection());
+      if (showWhoToFollow && index == 2) {
+        children.add(
+          WhoToFollowSection(
+            suggestions: controller.suggestions,
+            errorMessage: controller.suggestionsErrorMessage,
+            isFollowing: controller.isFollowing,
+            onFollowTap: (suggestion) async {
+              final success = await controller.followSuggestion(suggestion);
+              if (!success && context.mounted) {
+                _showSnack(context, 'Unable to follow user right now.');
+              }
+            },
+          ),
+        );
         insertedWhoToFollow = true;
       }
 
       final post = posts[index];
       children.add(InkWell(
-        onTap: () => onPostTap(post),
-        child: ActivityPostCard(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PostStatsScreen(post: post), // Navigate to your new screen
+            ),
+          );
+        },
+         child: ActivityPostCard(
           post: post,
           onAvatarTap: () => Navigator.push(
             context,
@@ -184,7 +203,21 @@ class _FeedScreenState extends State<FeedScreen> {
       );
     }
 
-    if (!insertedWhoToFollow) children.add(const WhoToFollowSection());
+    if (!insertedWhoToFollow) {
+      children.add(
+        WhoToFollowSection(
+          suggestions: controller.suggestions,
+          errorMessage: controller.suggestionsErrorMessage,
+          isFollowing: controller.isFollowing,
+          onFollowTap: (suggestion) async {
+            final success = await controller.followSuggestion(suggestion);
+            if (!success && context.mounted) {
+              _showSnack(context, 'Unable to follow user right now.');
+            }
+          },
+        ),
+      );
+    }
 
     return SliverList(delegate: SliverChildListDelegate(children));
   }
@@ -260,9 +293,16 @@ class _BleConnectCard extends StatelessWidget {
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
-class _MainHeader extends StatelessWidget {
+class _MainHeader extends StatefulWidget {
   final ValueChanged<int> onTabChanged;
   const _MainHeader({required this.onTabChanged});
+
+  @override
+  State<_MainHeader> createState() => _MainHeaderState();
+}
+
+class _MainHeaderState extends State<_MainHeader> {
+  bool _notificationsOn = true;
 
   @override
   Widget build(BuildContext context) {
@@ -316,7 +356,7 @@ class _MainHeader extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          FilterTabs(onTabChanged: onTabChanged),
+          FilterTabs(onTabChanged: widget.onTabChanged),
         ],
       ),
     );
