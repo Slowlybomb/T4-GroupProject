@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/widgets/post_stats_row.dart';
 import '../../../core/widgets/post_user_header.dart';
@@ -14,9 +15,21 @@ class _CommentData {
 }
 
 final _kInitialComments = [
-  _CommentData(name: 'Hugo E.', timeAgo: '1 hour ago', text: 'Great session! That split is impressive 🚣'),
-  _CommentData(name: 'Mark K.', timeAgo: '30 min ago', text: 'Nice pace, keep it up!'),
-  _CommentData(name: 'Sophie M.', timeAgo: '15 min ago', text: 'That distance is serious work 💪'),
+  _CommentData(
+    name: 'Hugo E.',
+    timeAgo: '1 hour ago',
+    text: 'Great session! That split is impressive 🚣',
+  ),
+  _CommentData(
+    name: 'Mark K.',
+    timeAgo: '30 min ago',
+    text: 'Nice pace, keep it up!',
+  ),
+  _CommentData(
+    name: 'Sophie M.',
+    timeAgo: '15 min ago',
+    text: 'That distance is serious work 💪',
+  ),
 ];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -33,6 +46,9 @@ class PostDetailScreen extends StatefulWidget {
     required this.post,
     required this.onClose,
     this.onAvatarTap,
+    this.onLike,
+    this.onComment,
+    this.onShare,
   });
 
   @override
@@ -118,9 +134,14 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           ),
                           const SizedBox(height: 30),
                           _ActionBar(
-                            likes: widget.post.likes,
+                            post: widget.post,
                             commentCount: _commentCount,
-                            onCommentTap: _scrollToComments,
+                            onLike: widget.onLike,
+                            onCommentTap: () {
+                              widget.onComment?.call();
+                              _scrollToComments();
+                            },
+                            onShare: widget.onShare,
                           ),
                           const SizedBox(height: 24),
                           _CommentsSection(
@@ -230,15 +251,19 @@ class _SaveButtonState extends State<_SaveButton> {
 }
 
 // ─── Interactive action bar ───────────────────────────────────────────────────
-class _ActionBar extends StatelessWidget {
-  final int likes;
+class _ActionBar extends StatefulWidget {
+  final Post post;
   final int commentCount;
+  final Future<void> Function(Post post)? onLike;
   final VoidCallback? onCommentTap;
+  final VoidCallback? onShare;
 
   const _ActionBar({
-    required this.likes,
+    required this.post,
     required this.commentCount,
+    this.onLike,
     this.onCommentTap,
+    this.onShare,
   });
 
   @override
@@ -248,13 +273,18 @@ class _ActionBar extends StatelessWidget {
 class _ActionBarState extends State<_ActionBar> {
   bool _liked = false;
 
-  int get _displayCount => widget.likes + (_liked ? 1 : 0);
+  int get _displayCount => widget.post.likes + (_liked ? 1 : 0);
 
-  void _toggleLike() => setState(() => _liked = !_liked);
+  void _toggleLike() {
+    setState(() => _liked = !_liked);
+    widget.onLike?.call(widget.post);
+  }
 
   void _share(BuildContext context) {
     Clipboard.setData(
-        const ClipboardData(text: 'https://gondolier.app/activity/1'));
+      const ClipboardData(text: 'https://gondolier.app/activity/1'),
+    );
+    widget.onShare?.call();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Link copied!'),
@@ -365,10 +395,12 @@ class _CommentsSectionState extends State<_CommentsSection> {
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        ..._comments.map((c) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _CommentTile(data: c),
-            )),
+        ..._comments.map(
+          (c) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _CommentTile(data: c),
+          ),
+        ),
         const SizedBox(height: 4),
         Row(
           children: [
@@ -383,7 +415,9 @@ class _CommentsSectionState extends State<_CommentsSection> {
                   filled: true,
                   fillColor: const Color(0xFFF5F5F5),
                   contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide.none,
@@ -427,13 +461,18 @@ class _CommentTile extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text(data.name,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text(
+                    data.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Text(data.timeAgo,
-                      style: const TextStyle(
-                          color: Colors.grey, fontSize: 11)),
+                  Text(
+                    data.timeAgo,
+                    style: const TextStyle(color: Colors.grey, fontSize: 11),
+                  ),
                 ],
               ),
               const SizedBox(height: 3),

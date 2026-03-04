@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import '../domain/models/post.dart';
-import 'post_actions.dart';
-import 'post_map.dart';
 
-// Core design system widgets
 import '../../../core/widgets/post_stats_row.dart';
 import '../../../core/widgets/post_user_header.dart';
+import '../domain/models/post.dart';
 
 class ActivityPostCard extends StatelessWidget {
   const ActivityPostCard({
@@ -33,7 +30,7 @@ class ActivityPostCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -66,6 +63,7 @@ class ActivityPostCard extends StatelessWidget {
           const SizedBox(height: 15),
           _PostActions(
             likes: post.likes,
+            comments: post.comments,
             onLikeTap: onLikeTap,
             onCommentTap: onCommentTap,
             onShareTap: onShareTap,
@@ -142,7 +140,6 @@ class _RoutePolylinePainter extends CustomPainter {
     final path = Path();
     for (var index = 0; index < routePoints.length; index++) {
       final point = routePoints[index];
-      // Convert geo coordinates into local [0..1] bounds so any route fits card.
       final normalizedX = (point.longitude - minLon) / effectiveLonSpan;
       final normalizedY = (point.latitude - minLat) / effectiveLatSpan;
       final x = padding + normalizedX * width;
@@ -168,44 +165,79 @@ class _RoutePolylinePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _RoutePolylinePainter oldDelegate) {
     return oldDelegate.routePoints != routePoints;
-          const SizedBox(height: 15),
-          // Replaced placeholder with the hardcoded map
-          const ClipRRect(
-            borderRadius: BorderRadius.all(Radius.circular(16)),
-            child: SizedBox(
-              height: 180,
-              width: double.infinity,
-              child: StaticRowingMap(),
-            ),
-          ),
-          const SizedBox(height: 15),
-          Padding(
-  padding: const EdgeInsets.only(top: 15), 
-  child: PostActions(likes: post.likes , post: post),
-)
-        ],
-      ),
-    );
   }
 }
 
 class _PostActions extends StatelessWidget {
-  final int likes;
+  const _PostActions({
+    required this.likes,
+    required this.comments,
+    this.onLikeTap,
+    this.onCommentTap,
+    this.onShareTap,
+  });
 
-  const _PostActions({required this.likes});
+  final int likes;
+  final int comments;
+  final VoidCallback? onLikeTap;
+  final VoidCallback? onCommentTap;
+  final VoidCallback? onShareTap;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.favorite_border, color: Colors.red, size: 20),
-        const SizedBox(width: 5),
-        Text('$likes', style: const TextStyle(fontSize: 12)),
+        _ActionItem(
+          icon: Icons.favorite_border,
+          label: '$likes',
+          color: Colors.red,
+          onTap: onLikeTap,
+        ),
         const SizedBox(width: 15),
-        const Icon(Icons.chat_bubble_outline, color: Colors.grey, size: 20),
+        _ActionItem(
+          icon: Icons.chat_bubble_outline,
+          label: '$comments',
+          color: Colors.grey,
+          onTap: onCommentTap,
+        ),
         const Spacer(),
-        const Icon(Icons.share_outlined, color: Colors.grey, size: 20),
+        _ActionItem(
+          icon: Icons.share_outlined,
+          label: 'Share',
+          color: Colors.grey,
+          onTap: onShareTap,
+        ),
       ],
+    );
+  }
+}
+
+class _ActionItem extends StatelessWidget {
+  const _ActionItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 5),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
     );
   }
 }
