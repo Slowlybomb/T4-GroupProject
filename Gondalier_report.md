@@ -2,8 +2,6 @@
 An Open Source Rowing Monitor
 #### Group 4
 
-![Gondolier Logo](images/gondolierLogo.png)
-
 #### Group Members
 - Hugo Guenebaut
 - Emin Aksoyg

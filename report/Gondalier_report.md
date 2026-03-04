@@ -3,10 +3,20 @@ MathJax = { tex: { inlineMath: [['$','$']] } };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 
-
 # Gondolier
+An Open Source Rowing Monitor
+#### Group 4
 
-## An open source rowing monitor
+![Gondolier Logo](gondolierLogo.png)
+
+#### Group Members
+- Hugo Guenebaut
+- Emin Aksoyg
+- Nixie
+- Hleb Slyusar
+- David Fresno
+- Mark Cannavan
+
 
 **Preface**
 
