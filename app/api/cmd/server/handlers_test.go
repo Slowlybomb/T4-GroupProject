@@ -240,6 +240,90 @@ func TestActivitiesPostCreatesRecord(t *testing.T) {
 	}
 }
 
+func TestActivitiesPostNormalizesFeatureCollectionRouteGeoJSON(t *testing.T) {
+	const userID = "11111111-1111-1111-1111-111111111111"
+	now := time.Now().UTC().Truncate(time.Second)
+
+	store := &fakeActivityService{
+		createFn: func(ctx context.Context, gotUserID string, req CreateActivityRequest) (Activity, error) {
+			if gotUserID != userID {
+				t.Fatalf("expected userID %s, got %s", userID, gotUserID)
+			}
+
+			var route map[string]any
+			if err := json.Unmarshal(req.RouteGeoJSON, &route); err != nil {
+				t.Fatalf("failed to decode normalized route_geojson: %v", err)
+			}
+			if route["type"] != "LineString" {
+				t.Fatalf("expected normalized LineString, got %v", route["type"])
+			}
+			coords, ok := route["coordinates"].([]any)
+			if !ok || len(coords) != 3 {
+				t.Fatalf("unexpected coordinates: %#v", route["coordinates"])
+			}
+
+			return Activity{
+				ID:           "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+				UserID:       gotUserID,
+				Visibility:   req.Visibility,
+				StartTime:    req.StartTime,
+				RouteGeoJSON: req.RouteGeoJSON,
+				CreatedAt:    now,
+			}, nil
+		},
+	}
+
+	r := testRouter(t, fakeAuthWithUser(userID), store, nil)
+	body := []byte(`{
+		"start_time":"2026-01-01T10:00:00Z",
+		"visibility":"public",
+		"route_geojson":{
+			"type":"FeatureCollection",
+			"features":[
+				{"type":"Feature","geometry":{"type":"Point","coordinates":[-8.46,51.89]}},
+				{"type":"Feature","geometry":{"type":"LineString","coordinates":[[-8.4606,51.8991],[-8.4610,51.8995],[-8.4632,51.8997]]}}
+			]
+		}
+	}`)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/activities", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d, body=%s", w.Code, w.Body.String())
+	}
+}
+
+func TestActivitiesPostRejectsRouteGeoJSONWithoutLineString(t *testing.T) {
+	const userID = "11111111-1111-1111-1111-111111111111"
+
+	r := testRouter(t, fakeAuthWithUser(userID), &fakeActivityService{}, nil)
+	body := []byte(`{
+		"start_time":"2026-01-01T10:00:00Z",
+		"visibility":"public",
+		"route_geojson":{
+			"type":"FeatureCollection",
+			"features":[
+				{"type":"Feature","geometry":{"type":"Point","coordinates":[-8.46,51.89]}}
+			]
+		}
+	}`)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/activities", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d, body=%s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "LineString") {
+		t.Fatalf("expected LineString error, got body=%s", w.Body.String())
+	}
+}
+
 func TestActivitiesGetInvalidID(t *testing.T) {
 	r := testRouter(t, fakeAuthWithUser("11111111-1111-1111-1111-111111111111"), &fakeActivityService{}, nil)
 

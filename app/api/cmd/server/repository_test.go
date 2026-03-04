@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -208,5 +211,100 @@ func TestScanActivityPropagatesScanError(t *testing.T) {
 	_, err := scanActivity(fakeScanner{err: errors.New("scan failed")})
 	if err == nil {
 		t.Fatal("expected scan error to be returned")
+	}
+}
+
+func TestNormalizeRouteGeoJSON(t *testing.T) {
+	t.Run("accepts LineString input", func(t *testing.T) {
+		input := json.RawMessage(`{"type":"LineString","coordinates":[[-8.46,51.89],[-8.45,51.90]]}`)
+		normalized, err := normalizeRouteGeoJSON(input)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		assertNormalizedLineString(t, normalized, 2)
+	})
+
+	t.Run("accepts Feature input", func(t *testing.T) {
+		input := json.RawMessage(`{
+			"type":"Feature",
+			"properties":{"name":"route"},
+			"geometry":{"type":"LineString","coordinates":[[-8.46,51.89],[-8.45,51.90]]}
+		}`)
+		normalized, err := normalizeRouteGeoJSON(input)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		assertNormalizedLineString(t, normalized, 2)
+	})
+
+	t.Run("accepts FeatureCollection input and picks first LineString", func(t *testing.T) {
+		input := json.RawMessage(`{
+			"type":"FeatureCollection",
+			"features":[
+				{"type":"Feature","geometry":{"type":"Point","coordinates":[-8.0,51.0]}},
+				{"type":"Feature","geometry":{"type":"LineString","coordinates":[[-8.46,51.89],[-8.45,51.90],[-8.44,51.91]]}}
+			]
+		}`)
+		normalized, err := normalizeRouteGeoJSON(input)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		assertNormalizedLineString(t, normalized, 3)
+	})
+
+	t.Run("returns nil for empty payload", func(t *testing.T) {
+		normalized, err := normalizeRouteGeoJSON(nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if normalized != nil {
+			t.Fatalf("expected nil normalized payload, got %s", string(normalized))
+		}
+	})
+
+	t.Run("rejects payload without LineString geometry", func(t *testing.T) {
+		input := json.RawMessage(`{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[0,0]}}]}`)
+		_, err := normalizeRouteGeoJSON(input)
+		if err == nil {
+			t.Fatal("expected an error")
+		}
+		if !strings.Contains(err.Error(), "LineString") {
+			t.Fatalf("expected LineString error, got %v", err)
+		}
+	})
+
+	t.Run("rejects out-of-range coordinate", func(t *testing.T) {
+		input := json.RawMessage(`{"type":"LineString","coordinates":[[200,10]]}`)
+		_, err := normalizeRouteGeoJSON(input)
+		if err == nil {
+			t.Fatal("expected an error")
+		}
+		if !strings.Contains(err.Error(), "between -180 and 180") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+}
+
+func assertNormalizedLineString(t *testing.T, raw json.RawMessage, expectedPoints int) {
+	t.Helper()
+
+	var payload map[string]any
+	if err := json.NewDecoder(bytes.NewReader(raw)).Decode(&payload); err != nil {
+		t.Fatalf("failed to decode normalized payload: %v", err)
+	}
+
+	if payload["type"] != "LineString" {
+		t.Fatalf("expected type LineString, got %v", payload["type"])
+	}
+
+	coords, ok := payload["coordinates"].([]any)
+	if !ok {
+		t.Fatalf("expected coordinates array, got %T", payload["coordinates"])
+	}
+	if len(coords) != expectedPoints {
+		t.Fatalf("expected %d coordinates, got %d", expectedPoints, len(coords))
 	}
 }
