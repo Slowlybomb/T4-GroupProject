@@ -313,7 +313,7 @@ This layer doesn't actually do any training, and is just used for feeding data t
 
 *Dense Layer*
 <p align="center">
-  <img src="dense.png" alt="Dense layer diagram"/>
+  <img src="dense.png" alt="Dense layer diagram" width=700/>
 </p>
 
 A **dense layer**, also known as a **fully connected layer**, connects every neuron in the layer to every neuron in the previous layer. Each connection has an associated weight that is learned during training.
