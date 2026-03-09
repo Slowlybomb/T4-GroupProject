@@ -375,33 +375,33 @@ code {
 <thead>
 <tr>
 <th>Member</th>
-<th>Role</th>
+<th>GitHub</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Hugo Guenebaut</td>
-<td>Embedded Systems</td>
+<td><a href="https://github.com/hugo-gu">hugo-gu</a></td>
 </tr>
 <tr>
 <td>Emin Aksoy</td>
-<td>Embedded Ai</td>
+<td><a href="https://github.com/EAksoy7">EAksoy7</a></td>
 </tr>
 <tr>
-<td>Nixie</td>
-<td>Embedded UI</td>
-</tr>
-<tr>
-<td>Hleb Slyusar</td>
-<td>Backend &amp; DevOps</td>
-</tr>
-<tr>
-<td>David Fresno</td>
-<td>Frontend</td>
+<td>Roxana (Nixie) Turcu</td>
+<td><a href="https://github.com/roxieturcu">roxieturcu</a></td>
 </tr>
 <tr>
 <td>Mark Cannavan</td>
-<td>Bluetooth Connection Engineering</td>
+<td><a href="https://github.com/MCannavan">MCannavan</a></td>
+</tr>
+<tr>
+<td>Hleb Slyusar</td>
+<td><a href="https://github.com/Slowlybomb">Slowlybomb</a></td>
+</tr>
+<tr>
+<td>David Fresno</td>
+<td><a href="https://github.com/molfresh">molfresh</a></td>
 </tr>
 </tbody>
 </table>
@@ -619,24 +619,8 @@ After review and feedback, this screen layout proved suboptimal. The most import
 <p><em>Decision and trade-off.</em> we kept this subsystem focused on the implemented MVP rather than a larger platform design. That gave us a small and understandable backend surface that supported the app and report requirements without spending project time on infrastructure we did not need to demo.</p>
 <h3 id="system-architecture">System Architecture</h3>
 <p>The backend is organised as a single Go service in <code>app/api</code>, backed by hosted Supabase services for authentication, PostgreSQL, and object storage. Deployment is handled separately from the data layer: the API is built and deployed to Render, while Supabase remains the managed provider for identity, database, and storage concerns.</p>
-<p>Architecture figure:</p>
-<pre class="hljs"><code><div>+------------------+        HTTPS + Bearer JWT / WebSocket        +----------------------+
-| Flutter mobile   | -------------------------------------------&gt; | Go API (Gin)         |
-| application      |                                              | hosted on Render     |
-+------------------+                                              +----------+-----------+
-                                                                              |
-                              +-----------------------------------------------+----------------------------------+
-                              |                                               |                                  |
-                              v                                               v                                  v
-                    +---------------------+                        +---------------------+            +---------------------+
-                    | Supabase Auth       |                        | Supabase Postgres   |            | Supabase Storage    |
-                    | JWKS token verify   |                        | app data + RLS      |            | avatars + images    |
-                    +---------------------+                        +---------------------+            +---------------------+
-
-+------------------+                test / build / deploy hook                +----------------------+
-| GitHub Actions   | -------------------------------------------------------&gt; | Render deployment    |
-+------------------+                                                          +----------------------+
-</div></code></pre>
+<p>Architecture figure:
+<img src="api/Backend Arhitecture.png" alt="Architecture figure"></p>
 <p>Go and Gin were chosen because the service only needed a small number of explicit routes, middleware, and query paths, and the code could stay in one binary without a large framework. Supabase reduced operational complexity by providing managed auth, Postgres, and storage in one place. Render was a practical fit for the API because it supports a simple deploy-hook workflow and a lightweight hosted demo environment.</p>
 <p><em>Decision and trade-off.</em> This architecture deliberately prefers managed services over a fully self-hosted stack. The trade-off is less control over every layer, but in return we gained faster delivery, simpler environment setup, and tighter integration between auth, storage, and database security.</p>
 <h3 id="api-design-and-implementation">API Design and Implementation</h3>
@@ -772,6 +756,7 @@ After review and feedback, this screen layout proved suboptimal. The most import
 <li><code>000004_activity_sample_coordinates.up.sql</code> added longitude, latitude, and coordinate-source columns and computed stroke locations by interpolating along the stored route geometry.</li>
 <li><code>000005_profiles_on_auth_signup.up.sql</code> added a trigger and backfill query so new Supabase auth users automatically get a matching profile row.</li>
 </ol>
+<p>Current database version: <strong>5</strong></p>
 <p>Two schema decisions are especially important for correctness. First, <code>profiles</code> are tied directly to Supabase auth users, which avoids custom identity reconciliation logic. Second, the database does not treat route data as free-form JSON; it constrains and normalises the shape early so later logic can rely on it.</p>
 <p><em>Decision and trade-off.</em> I chose a strongly constrained relational schema instead of storing most app state in loosely structured JSON documents. That makes migrations and schema changes more deliberate, but it gives clearer integrity guarantees and far simpler query logic for feeds, follows, and derived workout summaries.</p>
 <h3 id="database-automation-and-derived-metrics">Database Automation and Derived Metrics</h3>
@@ -846,13 +831,349 @@ After review and feedback, this screen layout proved suboptimal. The most import
 </ol>
 <h3 id="appendix-c---contributors-and-references">Appendix C - Contributors and references</h3>
 <p>Contributors:</p>
-<ul>
-<li>Hugo Guenebaut - Embedded systems lead</li>
-<li>Emin Aksoy - Machine learning engineer</li>
-<li>Nixie - Embedded UI designer</li>
-<li>Mark - Communications and radio engineer</li>
-<li></li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Role</th>
+<th>GitHub</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hugo Guenebaut</td>
+<td>Embedded systems lead</td>
+<td><a href="https://github.com/hugo-gu">hugo-gu</a></td>
+</tr>
+<tr>
+<td>Emin Aksoy</td>
+<td>Machine learning engineer</td>
+<td><a href="https://github.com/EAksoy7">EAksoy7</a></td>
+</tr>
+<tr>
+<td>Nixie</td>
+<td>Embedded UI designer</td>
+<td><a href="https://github.com/roxieturcu">roxieturcu</a></td>
+</tr>
+<tr>
+<td>Hleb Slyusar</td>
+<td>Backend &amp; DevOps</td>
+<td><a href="https://github.com/Slowlybomb">Slowlybomb</a></td>
+</tr>
+<tr>
+<td>David Fresno</td>
+<td>Frontend and Mobile App Engineer</td>
+<td><a href="https://github.com/molfresh">molfresh</a></td>
+</tr>
+<tr>
+<td>Mark Cannavan</td>
+<td>Communications and radio Engineer</td>
+<td><a href="https://github.com/MCannavan">MCannavan</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="appendix-d---backend-file-map-and-responsibilities">Appendix D - Backend file map and responsibilities</h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app/api/cmd/server/main.go</code></td>
+<td>API entrypoint, route registration, JWT middleware, websocket hub, storage signing, and PostgreSQL repository logic</td>
+</tr>
+<tr>
+<td><code>app/api/openapi.yaml</code></td>
+<td>OpenAPI contract for the backend, including implemented routes and longer-term planned endpoints</td>
+</tr>
+<tr>
+<td><code>app/api/migrations/000001_initial_schema.up.sql</code></td>
+<td>Core schema, activity visibility rules, indexes, and team-owner trigger</td>
+</tr>
+<tr>
+<td><code>app/api/migrations/000002_storage_policies.up.sql</code></td>
+<td>Supabase storage bucket privacy and per-user object access policies</td>
+</tr>
+<tr>
+<td><code>app/api/migrations/000003_activity_samples_stroke_distance.up.sql</code></td>
+<td>Conversion of activity samples to raw stroke events and derived metric recomputation</td>
+</tr>
+<tr>
+<td><code>app/api/migrations/000004_activity_sample_coordinates.up.sql</code></td>
+<td>Route-based coordinate interpolation for stroke samples</td>
+</tr>
+<tr>
+<td><code>app/api/migrations/000005_profiles_on_auth_signup.up.sql</code></td>
+<td>Automatic profile creation and backfill for Supabase auth users</td>
+</tr>
+<tr>
+<td><code>app/Makefile</code></td>
+<td>Local run, build, test, and migration commands</td>
+</tr>
+<tr>
+<td><code>.github/workflows/ci.yml</code></td>
+<td>Continuous integration for Go API and Flutter app checks</td>
+</tr>
+<tr>
+<td><code>.github/workflows/deploy-go-api.yml</code></td>
+<td>Build-and-deploy workflow for the Go API on Render</td>
+</tr>
+<tr>
+<td><code>app/docs/README.md</code></td>
+<td>Local setup, migration guidance, and troubleshooting notes</td>
+</tr>
+<tr>
+<td><code>app/docs/go-docs/README_APP.md</code></td>
+<td>Backend environment snapshot, endpoint summary, storage notes, and websocket notes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="appendix-e---implemented-api-route-reference">Appendix E - Implemented API route reference</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Route</th>
+<th>Auth</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/health</code></td>
+<td>No</td>
+<td>Public health probe for uptime checks</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/health</code></td>
+<td>No</td>
+<td>Versioned health endpoint</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/activities</code></td>
+<td>Yes</td>
+<td>Supports <code>scope=following|global|friends</code>; defaults to <code>following</code></td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/activities</code></td>
+<td>Yes</td>
+<td>Validates visibility, optional team ownership, and route GeoJSON</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/activities/:id</code></td>
+<td>Yes</td>
+<td>Returns one visible activity by UUID</td>
+</tr>
+<tr>
+<td><code>PATCH</code></td>
+<td><code>/api/v1/activities/:id/like</code></td>
+<td>Yes</td>
+<td>Idempotent like operation</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/follows/suggestions</code></td>
+<td>Yes</td>
+<td>Limit defaults to 5 and is clamped to safe bounds</td>
+</tr>
+<tr>
+<td><code>PUT</code></td>
+<td><code>/api/v1/follows/:user_id</code></td>
+<td>Yes</td>
+<td>Idempotent follow operation, rejects self-follow</td>
+</tr>
+<tr>
+<td><code>DELETE</code></td>
+<td><code>/api/v1/follows/:user_id</code></td>
+<td>Yes</td>
+<td>Idempotent unfollow operation</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/metrics/summary</code></td>
+<td>Yes</td>
+<td>Requires <code>from</code> and <code>to</code> RFC3339 timestamps</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/files/upload-url</code></td>
+<td>Yes</td>
+<td>Returns signed upload URL for <code>avatars</code> or <code>workout-images</code></td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/files/download-url</code></td>
+<td>Yes</td>
+<td>Returns signed download URL for authenticated user-owned objects</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/ws</code></td>
+<td>Yes</td>
+<td>Websocket endpoint with <code>feed</code>, <code>status</code>, and <code>notifications</code> channels</td>
+</tr>
+</tbody>
+</table>
+<p>The API also exposes <code>HEAD</code> probes for the root and health endpoints, but the table above focuses on the routes that matter most to the application and backend integration.</p>
+<h3 id="appendix-f---database-migration-map">Appendix F - Database migration map</h3>
+<table>
+<thead>
+<tr>
+<th>Migration</th>
+<th>Purpose</th>
+<th>Important outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>000001_initial_schema</code></td>
+<td>Create the first relational schema</td>
+<td>Profiles, teams, activities, follows, likes, comments, indexes, and activity RLS policies</td>
+</tr>
+<tr>
+<td><code>000002_storage_policies</code></td>
+<td>Secure media storage</td>
+<td>Private <code>avatars</code> and <code>workout-images</code> buckets with per-user folder access</td>
+</tr>
+<tr>
+<td><code>000003_activity_samples_stroke_distance</code></td>
+<td>Reshape telemetry model</td>
+<td>Raw stroke timestamps and cumulative distance become the source for derived activity metrics</td>
+</tr>
+<tr>
+<td><code>000004_activity_sample_coordinates</code></td>
+<td>Add route-aware position data</td>
+<td>Stroke coordinates are interpolated from stored route geometry</td>
+</tr>
+<tr>
+<td><code>000005_profiles_on_auth_signup</code></td>
+<td>Keep auth and app profiles aligned</td>
+<td>New Supabase users automatically receive application profile rows</td>
+</tr>
+</tbody>
+</table>
+<p>Each migration also has a paired <code>.down.sql</code> file so schema changes can be rolled back in controlled development scenarios.</p>
+<h3 id="appendix-g---operations-and-cicd-quick-reference">Appendix G - Operations and CI/CD quick reference</h3>
+<p>Make targets:</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>make -C app api-run</code></td>
+<td>Run the Go API locally</td>
+</tr>
+<tr>
+<td><code>make -C app api-build</code></td>
+<td>Build the server binary</td>
+</tr>
+<tr>
+<td><code>make -C app api-start</code></td>
+<td>Start the built binary from <code>app/api/bin/server</code></td>
+</tr>
+<tr>
+<td><code>make -C app api-test</code></td>
+<td>Run Go tests</td>
+</tr>
+<tr>
+<td><code>make -C app api-vet</code></td>
+<td>Run Go static checks</td>
+</tr>
+<tr>
+<td><code>make -C app migrate-up</code></td>
+<td>Apply all pending database migrations</td>
+</tr>
+<tr>
+<td><code>make -C app migrate-down</code></td>
+<td>Roll back one migration</td>
+</tr>
+<tr>
+<td><code>make -C app migrate-version</code></td>
+<td>Show the current migration version</td>
+</tr>
+</tbody>
+</table>
+<p>Environment variables:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Required</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DATABASE_URL</code> or <code>DB_URL</code></td>
+<td>Yes</td>
+<td>PostgreSQL connection string for the API and migrations</td>
+</tr>
+<tr>
+<td><code>SUPABASE_JWKS_URL</code></td>
+<td>Yes</td>
+<td>JWKS endpoint used to verify Supabase JWTs</td>
+</tr>
+<tr>
+<td><code>SUPABASE_URL</code></td>
+<td>No</td>
+<td>Base URL for issuer derivation and storage signing</td>
+</tr>
+<tr>
+<td><code>SUPABASE_SERVICE_ROLE_KEY</code></td>
+<td>No</td>
+<td>Required for signed file upload and download URL generation</td>
+</tr>
+<tr>
+<td><code>JWT_ISSUER</code></td>
+<td>No</td>
+<td>Explicit JWT issuer override</td>
+</tr>
+<tr>
+<td><code>JWT_AUDIENCE</code></td>
+<td>No</td>
+<td>JWT audience, defaulting to <code>authenticated</code></td>
+</tr>
+<tr>
+<td><code>PORT</code></td>
+<td>No</td>
+<td>HTTP port, defaulting to <code>8080</code></td>
+</tr>
+</tbody>
+</table>
+<p>Workflow summary:</p>
+<table>
+<thead>
+<tr>
+<th>Workflow</th>
+<th>Trigger</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ci.yml</code></td>
+<td>Pull requests and pushes to <code>main</code></td>
+<td>Runs Go test/vet/build and Flutter pub get/analyze/test</td>
+</tr>
+<tr>
+<td><code>deploy-go-api.yml</code></td>
+<td>Pushes to <code>main</code> and manual dispatch</td>
+<td>Builds the Go server and triggers Render deployment if <code>RENDER_DEPLOY_HOOK_URL</code> is configured</td>
+</tr>
+</tbody>
+</table>
 <h3 id="references">References</h3>
 <ul>
 <li>TensorFlow Lite Micro documentation - <a href="https://www.tensorflow.org/lite/micro">https://www.tensorflow.org/lite/micro</a></li>
