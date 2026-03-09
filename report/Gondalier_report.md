@@ -412,6 +412,89 @@ Contributors:
 | David Fresno | Frontend and Mobile App Engineer | [molfresh](https://github.com/molfresh) |
 | Mark Cannavan | Communications and radio Engineer | [MCannavan](https://github.com/MCannavan) |
 
+### Appendix D \- Backend file map and responsibilities
+
+| File | Responsibility |
+| --- | --- |
+| `app/api/cmd/server/main.go` | API entrypoint, route registration, JWT middleware, websocket hub, storage signing, and PostgreSQL repository logic |
+| `app/api/openapi.yaml` | OpenAPI contract for the backend, including implemented routes and longer-term planned endpoints |
+| `app/api/migrations/000001_initial_schema.up.sql` | Core schema, activity visibility rules, indexes, and team-owner trigger |
+| `app/api/migrations/000002_storage_policies.up.sql` | Supabase storage bucket privacy and per-user object access policies |
+| `app/api/migrations/000003_activity_samples_stroke_distance.up.sql` | Conversion of activity samples to raw stroke events and derived metric recomputation |
+| `app/api/migrations/000004_activity_sample_coordinates.up.sql` | Route-based coordinate interpolation for stroke samples |
+| `app/api/migrations/000005_profiles_on_auth_signup.up.sql` | Automatic profile creation and backfill for Supabase auth users |
+| `app/Makefile` | Local run, build, test, and migration commands |
+| `.github/workflows/ci.yml` | Continuous integration for Go API and Flutter app checks |
+| `.github/workflows/deploy-go-api.yml` | Build-and-deploy workflow for the Go API on Render |
+| `app/docs/README.md` | Local setup, migration guidance, and troubleshooting notes |
+| `app/docs/go-docs/README_APP.md` | Backend environment snapshot, endpoint summary, storage notes, and websocket notes |
+
+### Appendix E \- Implemented API route reference
+
+| Method | Route | Auth | Notes |
+| --- | --- | --- | --- |
+| `GET` | `/health` | No | Public health probe for uptime checks |
+| `GET` | `/api/v1/health` | No | Versioned health endpoint |
+| `GET` | `/api/v1/activities` | Yes | Supports `scope=following|global|friends`; defaults to `following` |
+| `POST` | `/api/v1/activities` | Yes | Validates visibility, optional team ownership, and route GeoJSON |
+| `GET` | `/api/v1/activities/:id` | Yes | Returns one visible activity by UUID |
+| `PATCH` | `/api/v1/activities/:id/like` | Yes | Idempotent like operation |
+| `GET` | `/api/v1/follows/suggestions` | Yes | Limit defaults to 5 and is clamped to safe bounds |
+| `PUT` | `/api/v1/follows/:user_id` | Yes | Idempotent follow operation, rejects self-follow |
+| `DELETE` | `/api/v1/follows/:user_id` | Yes | Idempotent unfollow operation |
+| `GET` | `/api/v1/metrics/summary` | Yes | Requires `from` and `to` RFC3339 timestamps |
+| `POST` | `/api/v1/files/upload-url` | Yes | Returns signed upload URL for `avatars` or `workout-images` |
+| `POST` | `/api/v1/files/download-url` | Yes | Returns signed download URL for authenticated user-owned objects |
+| `GET` | `/api/v1/ws` | Yes | Websocket endpoint with `feed`, `status`, and `notifications` channels |
+
+The API also exposes `HEAD` probes for the root and health endpoints, but the table above focuses on the routes that matter most to the application and backend integration.
+
+### Appendix F \- Database migration map
+
+| Migration | Purpose | Important outcome |
+| --- | --- | --- |
+| `000001_initial_schema` | Create the first relational schema | Profiles, teams, activities, follows, likes, comments, indexes, and activity RLS policies |
+| `000002_storage_policies` | Secure media storage | Private `avatars` and `workout-images` buckets with per-user folder access |
+| `000003_activity_samples_stroke_distance` | Reshape telemetry model | Raw stroke timestamps and cumulative distance become the source for derived activity metrics |
+| `000004_activity_sample_coordinates` | Add route-aware position data | Stroke coordinates are interpolated from stored route geometry |
+| `000005_profiles_on_auth_signup` | Keep auth and app profiles aligned | New Supabase users automatically receive application profile rows |
+
+Each migration also has a paired `.down.sql` file so schema changes can be rolled back in controlled development scenarios.
+
+### Appendix G \- Operations and CI/CD quick reference
+
+Make targets:
+
+| Command | Purpose |
+| --- | --- |
+| `make -C app api-run` | Run the Go API locally |
+| `make -C app api-build` | Build the server binary |
+| `make -C app api-start` | Start the built binary from `app/api/bin/server` |
+| `make -C app api-test` | Run Go tests |
+| `make -C app api-vet` | Run Go static checks |
+| `make -C app migrate-up` | Apply all pending database migrations |
+| `make -C app migrate-down` | Roll back one migration |
+| `make -C app migrate-version` | Show the current migration version |
+
+Environment variables:
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` or `DB_URL` | Yes | PostgreSQL connection string for the API and migrations |
+| `SUPABASE_JWKS_URL` | Yes | JWKS endpoint used to verify Supabase JWTs |
+| `SUPABASE_URL` | No | Base URL for issuer derivation and storage signing |
+| `SUPABASE_SERVICE_ROLE_KEY` | No | Required for signed file upload and download URL generation |
+| `JWT_ISSUER` | No | Explicit JWT issuer override |
+| `JWT_AUDIENCE` | No | JWT audience, defaulting to `authenticated` |
+| `PORT` | No | HTTP port, defaulting to `8080` |
+
+Workflow summary:
+
+| Workflow | Trigger | Result |
+| --- | --- | --- |
+| `ci.yml` | Pull requests and pushes to `main` | Runs Go test/vet/build and Flutter pub get/analyze/test |
+| `deploy-go-api.yml` | Pushes to `main` and manual dispatch | Builds the Go server and triggers Render deployment if `RENDER_DEPLOY_HOOK_URL` is configured |
+
 ### References
 
 - TensorFlow Lite Micro documentation \- [https://www.tensorflow.org/lite/micro](https://www.tensorflow.org/lite/micro)  
