@@ -1,31 +1,417 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-
-<html xmlns="http://www.w3.org/1999/xhtml">
-
+<!DOCTYPE html>
+<html>
 <head>
-<title>Gondalier_report.html</title>
-<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+<title>Gondalier_report.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
 
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
 </head>
-
 <body>
-
-<script>
-MathJax = { tex: { inlineMath: [['$','$']] } };
-</script>
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-
-<h1>Gondolier</h1>
-<h2>An open source rowing monitor</h2>
-<p><strong>Preface</strong></p>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="gondolier">Gondolier</h1>
+<p>An Open Source Rowing Monitor</p>
+<h2 id="group-4">Group 4</h2>
+<p>Project Logo
+<img src="gondolierLogo.png" alt="Gondolier Logo"></p>
+<h3 id="group-members">Group Members</h3>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hugo Guenebaut</td>
+<td>Embedded Systems</td>
+</tr>
+<tr>
+<td>Emin Aksoy</td>
+<td>Embedded Ai</td>
+</tr>
+<tr>
+<td>Nixie</td>
+<td>Embedded UI</td>
+</tr>
+<tr>
+<td>Hleb Slyusar</td>
+<td>Backend &amp; DevOps</td>
+</tr>
+<tr>
+<td>David Fresno</td>
+<td>Frontend</td>
+</tr>
+<tr>
+<td>Mark Cannavan</td>
+<td>Bluetooth Connection Engineering</td>
+</tr>
+</tbody>
+</table>
+<h2 id="preface">Preface</h2>
 <p>This document explains Gondolier's goals, design, components, and the rationale behind major decisions. It is intended for engineers who want to understand, maintain, or extend the rowing monitor hardware and firmware.</p>
-<p><strong>Summary</strong></p>
+<h3 id="summary">Summary</h3>
 <p>Gondolier is a compact on-boat rowing monitor that detects rowing strokes in real time using an IMU and a TensorFlow Lite model. It displays metrics (stroke rate, split time, session timer) and syncs session data to a phone app over Bluetooth Low Energy (BLE) for further analytics and social sharing.</p>
-<p><strong>History and Motivation</strong></p>
+<h3 id="history-and-motivation">History and Motivation</h3>
 <p>Rowers and coaches benefit from immediate, accurate stroke detection and per-stroke metrics. Existing solutions are bulky, old and expensive. Gondolier provides a lightweight, dedicated device that sits on the rigging, giving rowers immediate feedback and long-term session sync.</p>
-<p><strong>Context and Goals</strong></p>
+<h3 id="context-and-goals">Context and Goals</h3>
 <ul>
 <li>Real-time stroke detection with low latency.</li>
 <li>Long battery life and robust behaviour on a small microcontroller.</li>
@@ -33,7 +419,7 @@ MathJax = { tex: { inlineMath: [['$','$']] } };
 <li>Easy transfer of session data to a phone for analysis and sharing.</li>
 <li>Open-source hardware and firmware for reproducibility.</li>
 </ul>
-<p><strong>System Overview</strong></p>
+<h3 id="system-overview">System Overview</h3>
 <p>At a high level Gondolier consists of:</p>
 <ul>
 <li>A small microcontroller (ESP32-S3-MINI-1) running firmware written as an Arduino/ESP project; main firmware is in <code>embedded-code.ino</code>.</li>
@@ -42,19 +428,19 @@ MathJax = { tex: { inlineMath: [['$','$']] } };
 <li>An on-device ML model (<code>model.tflite</code> and supporting headers <code>model.h</code>, <code>model_data.h</code>) that classifies input windows into stroke / non-stroke.</li>
 <li>BLE transfer routines in <code>networking.h</code> to send compressed session data to a phone app.</li>
 </ul>
-<p><strong>Architecture and Components</strong></p>
+<h2 id="architecture-and-components">Architecture and Components</h2>
 <p>This section describes components and their responsibilities, and how they interact.</p>
 <ol>
 <li>Hardware</li>
+</ol>
+<ul>
 <li>MCU: ESP32-S3-MINI-1 - chosen for its dual-core RISC-V CPU, integrated WiFi and BLE, and sufficient flash/ram to host a small TFLite model.</li>
 <li>IMU: QMI8658 - a 6-axis sensor (3-axis accel, 3-axis gyro). 125Hz sampling provides enough resolution to detect rowing strokes while balancing power consumption.</li>
 <li>Display: 240×320 TFT (ILI9341) - low-power, readable in sunlight with SPI interface.</li>
-<li>
-<p>Power: LiPo battery + regulator; the firmware supports sleep modes between strokes to conserve power.</p>
-</li>
-<li>
-<p>Firmware (high level)</p>
-</li>
+<li>Power: LiPo battery + regulator; the firmware supports sleep modes between strokes to conserve power.</li>
+</ul>
+<ol>
+<li>Firmware (high level)</li>
 </ol>
 <p>The firmware organizes functionality into modules:</p>
 <ul>
@@ -62,33 +448,31 @@ MathJax = { tex: { inlineMath: [['$','$']] } };
 <li><code>model.h</code> / <code>model_data.h</code> - contain the TensorFlow Lite Micro model and inference integration code.</li>
 <li><code>Display.h</code> - UI primitives for the on-boat display: main screen, metric updates, and minimal menus.</li>
 <li><code>networking.h</code> - BLE advertisement, GATT services, and a simple protocol to upload sessions to the phone app.</li>
-<li>
-<p><code>embedded-code.ino</code> - application entrypoint, task orchestration, and state machine for session lifecycle.</p>
-</li>
-<li>
-<p>Machine learning model
-   The stroke detection model is trained offline on labeled IMU windows and exported to TFLite (<code>model.tflite</code>). At runtime we run a fixed-length sliding window of accelerometer magnitude through the TFLite Micro interpreter. The model outputs a probability (stroke / not-stroke) and the firmware applies a detection algorithm (threshold + debounce) to produce discrete stroke events.</p>
-</li>
+<li><code>embedded-code.ino</code> - application entrypoint, task orchestration, and state machine for session lifecycle.</li>
 </ul>
-<p><strong>Electronic Assembly:</strong></p>
+<ol>
+<li>Machine learning model<br>
+The stroke detection model is trained offline on labeled IMU windows and exported to TFLite (<code>model.tflite</code>). At runtime we run a fixed-length sliding window of accelerometer magnitude through the TFLite Micro interpreter. The model outputs a probability (stroke / not-stroke) and the firmware applies a detection algorithm (threshold + debounce) to produce discrete stroke events.</li>
+</ol>
+<h3 id="electronic-assembly">Electronic Assembly:</h3>
 <p>The electronic assembly was straight forward, as this is only a prototype, we used dev boards where possible. For the ESP32, I used a clone of the adafruit feather TFT with an integrated accelerometer; the accelerometer communicates with the MCU using I2C. The screen was a cheap TFT breakout board which was connected using the serial peripheral interface (SPI) for communication, the entire assembly was done using a perforated prototyping board. A 3.3v compatible SD card module was connected using SPI as well and so unique “chip select” pins were assigned to each SPI module. Buttons were added for control and were wired for pullup resistors. Debouncing capacitors were used to smooth button, accelerometer and voltage across the full circuit, a CP2104 Li-Po battery management system board was connected with a battery for the duration of data collection but this was removed after for safety.</p>
-<p>Simplified Schematic of the rowing tracker
-<img src="schematic.png" alt="Simplified schematic of the rowing tracker" width="600"/></p>
+<p>Simplified Schematic of the rowing tracker<br>
+<img src="schematic.png" alt="Simplified schematic of the rowing tracker"></p>
 <p>Breakout image of the electronics:</p>
-<p>Image of the full electronics stack:
-<strong>Design Decisions and Trade-offs</strong></p>
+<p>Image of the full electronics stack:</p>
+<h3 id="design-decisions-and-trade-offs">Design Decisions and Trade-offs</h3>
 <ul>
 <li>Model size and sampling rate: We limit the input window and sampling frequency to keep RAM usage and CPU cost low. This restricts model complexity but fits TFLite Micro on the ESP32-S3.</li>
 <li>BLE for sync: BLE provides easy phone connectivity and low power, but imposes throughput constraints which we address by batching and compressing session data.</li>
 <li>Display choice: SPI TFT gives readability and low pin count. It is less power-efficient than e-paper but allows real-time numeric updates.</li>
 </ul>
-<p><strong>Obtaining Training Data</strong></p>
+<h3 id="obtaining-training-data">Obtaining Training Data</h3>
 <ul>
 <li>Data Collection: The initial step of the project was data collection, before we could write the main firmware or prepare the model, we needed to collect a large amount of data, this was a lengthy process. We tested data collection and data processing in a plethora of different ways. World rowing champion, Sally Cudmore, kindly took our rowing tracker on to her boat so we could collect the necessary data. To try and make the process as quick as possible, we collected data at 800hz, filling the integrated buffer on the accelerometer and polling the data as frequently as possible, we collected both accelerometer and gyroscope data in case we would want to use both in the final model. We also ensured the device was rigidly connected to the boat to prevent noise from it bouncing around. While on the water, per our request, Sally did a variety of different strokes. This included strokes at different speeds and stroke rates, half strokes, low power and high power strokes. We collected a total of 2 hours of rowing data, roughly 800 data points.</li>
 <li>Data processing: At first, we used matplotlib to plot all three axes of the acceleration and gyroscope. This informed us very quickly that the rotational data was unnecessary so we immediately removed it. Looking at the acceleration data, the x axis was just complete noise, the y axis showed a small semblance of rowing strokes and the z axis showed clear rowing stroke, this made a lot of sense, the accelerometer was mounted in a way that its z axis was pointing in the direction of the boats motion, it was tilted up slights so the screen was visible to Sally and so some of the motion was also present in the y axis, the x axis was positioned perpendicular to the motion of the boat so the only acceleration in that axis was the wobbling of the boat due to waves and instability.</li>
 </ul>
-<p>Unprocessed z axis accelerometer data
-<img src="graph1.png" alt="Unprocessed z axis accelerometer data" width="700"/>
+<p>Unprocessed z axis accelerometer data<br>
+<img src="graph1.png" alt="Unprocessed z axis accelerometer data">
 Because we knew that rowers would want to tilt the device at different angles so they could view the screen in boats with different designs, we had to process the data in a way that would be totally agnostic to device orientation. To achieve this, we used simple trigonometry. Obtaining the magnitude of the Y and Z axes, where the data is present, turned it into a vector of acceleration that would not change depending on orientation.</p>
 <p>$$
 \vec{v} = \sqrt{Y^2 + Z^2}
@@ -97,24 +481,22 @@ $$</p>
 <p>$$
 \bar{m}[n] = \frac{1}{50} \sum_{k=0}^{49} \sqrt{Y[n-k]^2 + Z[n-k]^2}
 $$</p>
-<p>Noise signal before rolling average
-<img src="graph3.png" alt="Noise signal before rolling average" width="700"/>
-Blue line inside orange shows the processed signal compared to orange noisy signal
-<img src="graph4.png" alt="Blue line inside orange shows the processed signal compared to orange noisy signal" width="700"/>
-Lastly to remove gravitation anomalies, another rolling average was done but with a sample window size of 500, this acted as a high pass filter allowing the stroke data to pass through but not changes in the tilt of the boat</p>
+<p>Noise signal before rolling average<br>
+<img src="graph3.png" alt="Noise signal before rolling average"></p>
+<p>Blue line inside orange shows the processed signal compared to orange noisy signal<br>
+<img src="graph4.png" alt="Blue line inside orange shows the processed signal compared to orange noisy signal"></p>
+<p>Lastly to remove gravitation anomalies, another rolling average was done but with a sample window size of 500, this acted as a high pass filter allowing the stroke data to pass through but not changes in the tilt of the boat</p>
 <p>$$
 \bar{m}[n] = \frac{1}{500} \sum_{i=0}^{499} \frac{1}{50} \sum_{k=0}^{49} \sqrt{y[n-i-k]^2 + z[n-i-k]^2}
 $$</p>
-<p>30 seconds of processed data showing 9 strokes
-<img src="graph5.png" alt="30 seconds of processed data showing 9 strokes" width="700"/></p>
-<ul>
-<li>Creating stroke and non stroke training windows: Now that the data is cleaned and processed we had to decide how to best package the data to feed into the neural network, we tried a variety of methods for this, where we struggled was finding non stroke data, typically once on the water, Sally will row stroke after stroke until she is done with little rest time so to get non stroke data is very difficult, i created a python script that looked for peaks over a certain height, it labelled these peaks and then created windows across the whole dataset, overlapping with an offset of 1 second, the % of the stroke in each window was labelled based on where in the stroke the spike occurred and then a graph of each stroke was presented by the code to be manually approved or rejected, all windows that had less than 70% of a stroke as labelled as not a stroke. In the end, 400 windows were given to the model to train on, 300 stroke windows and 100 non stroke windows. This was a smaller dataset than we had wanted to work on but it still functioned well. This was the 8th different way we tried to window the data, it was difficult and involved a lot of trial and error and any attempt to use AI on this task threw us awry as this has never been attempted before publicly so there is no data online</li>
-</ul>
-<p>Manual review of stroke data
-<img src="graph6.png" alt="Manual review of stroke data" width="700"/>
-  Automated review of stroke data of entire 40 rowing session
-<img src="graph7.png" alt="Automated review of stroke data of entire 40 rowing session" width="700"/></p>
-<p><strong>Data Flow and Algorithms</strong></p>
+<p>30 seconds of processed data showing 9 strokes<br>
+<img src="graph5.png" alt="30 seconds of processed data showing 9 strokes"></p>
+<p>Creating stroke and non stroke training windows: Now that the data is cleaned and processed we had to decide how to best package the data to feed into the neural network, we tried a variety of methods for this, where we struggled was finding non stroke data, typically once on the water, Sally will row stroke after stroke until she is done with little rest time so to get non stroke data is very difficult, i created a python script that looked for peaks over a certain height, it labelled these peaks and then created windows across the whole dataset, overlapping with an offset of 1 second, the % of the stroke in each window was labelled based on where in the stroke the spike occurred and then a graph of each stroke was presented by the code to be manually approved or rejected, all windows that had less than 70% of a stroke as labelled as not a stroke. In the end, 400 windows were given to the model to train on, 300 stroke windows and 100 non stroke windows. This was a smaller dataset than we had wanted to work on but it still functioned well. This was the 8th different way we tried to window the data, it was difficult and involved a lot of trial and error and any attempt to use AI on this task threw us awry as this has never been attempted before publicly so there is no data online</p>
+<p>Manual review of stroke data<br>
+<img src="graph6.png" alt="Manual review of stroke data"></p>
+<p>Automated review of stroke data of entire 40 rowing session<br>
+<img src="graph7.png" alt="Automated review of stroke data of entire 40 rowing session"></p>
+<h3 id="data-flow-and-algorithms">Data Flow and Algorithms</h3>
 <ol>
 <li>
 <p>Acquisition: The IMU runs at a sampling frequency of 125Hz. The accelerometer vectors are read into a circular buffer.</p>
@@ -133,7 +515,7 @@ $$</p>
 </li>
 </ol>
 <p>Confirmed strokes are timestamped and added to the session buffer. Stroke rate (spm) and split time are computed using recent stroke intervals.</p>
-<p><strong>Firmware Structure and Files</strong></p>
+<h4 id="firmware-structure-and-files">Firmware Structure and Files</h4>
 <ul>
 <li><code>embedded-code.ino</code> - Main loop and mode management (idle, rowing, paused, sync). Handles button input and session start/stop.</li>
 <li><code>accelerometer.h</code> - IMU init, sample acquisition, buffer API: <code>void imu_init(); bool imu_has_samples(); void imu_pop_sample(Sample *s);</code></li>
@@ -141,57 +523,46 @@ $$</p>
 <li><code>networking.h</code> - BLE advertise, GATT service. Uses a small framing protocol: session metadata, then compressed sample/stroke records.</li>
 <li><code>model.h</code> / <code>model_data.h</code> / <code>model.tflite</code> - model binary integrated as const array plus code to call interpreter and return detection probability.</li>
 </ul>
-<p>Build, Flashing, and Development</p>
+<h3 id="build-flashing-and-development">Build, Flashing, and Development</h3>
 <p>The project is structured as an Arduino-style sketch with <code>embedded-code.ino</code> at the root and headers in the same folder. Two common ways to build and flash:</p>
 <ul>
-<li>Arduino IDE / Arduino CLI</li>
+<li>Arduino IDE / Arduino CLI
+<ul>
 <li>Install board support for <code>esp32</code> (Espressif) and select ESP32-S3 board.</li>
 <li>Open <code>embedded-code.ino</code> and upload.</li>
-<li>PlatformIO</li>
+</ul>
+</li>
+<li>PlatformIO
+<ul>
 <li>Create a <code>platformio.ini</code> with the <code>espressif32</code> platform and <code>board = esp32-s3-devkit</code> (or similar). Use the <code>upload</code> and <code>monitor</code> targets.</li>
 </ul>
-<p><strong>Development Tips</strong></p>
+</li>
+</ul>
+<h4 id="development-tips">Development Tips</h4>
 <ul>
 <li>Enable <code>#define DEBUG_SERIAL</code> to get verbose logs of sensor values, inference probabilities, and BLE state.</li>
 <li>When tuning the model threshold, log <code>probability</code> and <code>timestamp</code> pairs to serial and replay them offline.</li>
 </ul>
-<p><strong>Testing and Evaluation</strong></p>
+<h4 id="testing-and-evaluation">Testing and Evaluation</h4>
 <p>Unit testing on-device is limited, but key techniques used:</p>
 <ul>
 <li>Serial logging: capture IMU streams and model outputs for offline validation and visualization.</li>
 <li>Cross-validation: model trained with k-folds and tested on held-out boat types.</li>
 <li>On-device A/B: compare timestamps produced by the model with timestamps recorded by a coach and compute precision.</li>
 </ul>
-<p><strong>Performance and Resource Usage</strong></p>
+<h4 id="performance-and-resource-usage">Performance and Resource Usage</h4>
 <ul>
 <li>Model memory: The memory management proved a difficult task, with 360Kb of DRAM and 8MB of PSRAM we were extremely limited. Where possible, we removed things from ram and as much as possible tried to keep the larger items in PSRAM bypassing DRAM altogether when accessing it. The model alone took up nearly 1.2MB of RAM</li>
 <li>CPU load: Inference is invoked on a background task at a sliding-window cadence. CPU usage is modest.</li>
 <li>Power: the IMU’s internal buffer is used so that we only need to poll data from its registers every few milliseconds instead of constantly, this helps to reduce power usage as the i2c busses are kept mostly quiet. The display is refreshed at a typical rate of 1Hz when there is no new data to send, this reduces power consumption</li>
 </ul>
-<p><strong>Security, Privacy, and Safety</strong></p>
+<h4 id="security-privacy-and-safety">Security, Privacy, and Safety**</h4>
 <ul>
 <li>BLE pairing: Use bonding and minimal authentication in <code>networking.h</code> to avoid accidental data exposure.</li>
 <li>Data retention: Session data stored on-device is limited in size, statistics calculated on device are not stored as this can be done quickly on the phone or the backend server</li>
 <li>Physical mounting: The device is intended to be mounted securely; firmware checks for accelerometer saturation and warns on improbable data.</li>
 </ul>
-<p><strong>Display</strong></p>
-<ol>
-<li>Technical Specification</li>
-<li>240x320 pixel display screen with touchscreen capabilities.</li>
-<li>Open source graphics library provided by adafruit.</li>
-<li>4 white-LED backlight providing brightness with individual pixel RGB color support.</li>
-<li>
-<p>fastSPI communication standard used for a fast and responsive UI.</p>
-</li>
-<li>
-<p>Design Workflow</p>
-</li>
-</ol>
-<p>Multiple factors went into the decision for the user interface layout. At the top of the list, visual clarity was the number one priority.</p>
-<p>The embedded electronics use the screen in a horizontal layout, with the longest part of the screen being at the top and bottom. This provided us with a large canvas to give the split time and elapsed time equal room, while giving away most of the screen realestate to the strokes per minute counter.</p>
-<p>The initial screen layout consisted of a top bar, for displaying the time, and equal-space segments for the strokes per minute, split and elapsed time.</p>
-<p><img src="display_1.png" alt="Manual review of stroke data" width="700"/></p>
-<p><strong>Future Work and Open Questions</strong></p>
+<h3 id="future-work-and-open-questions">Future Work and Open Questions</h3>
 <ul>
 <li>Model improvements: explore multi-channel inputs (accel + gyro) or transformer-lite architectures to improve precision.</li>
 <li>Energy optimization: move more processing into the IMU and avail of its movement detection features</li>
@@ -199,7 +570,265 @@ $$</p>
 <li>Radio transmission: add a radio transmission system for communication with a device held by the coach so they can get the same data live</li>
 <li>GPS: integrate GPS for positional accuracy and speed tracking</li>
 </ul>
-<p><strong>Appendix A - File map and responsibilities</strong></p>
+<h2 id="display">Display</h2>
+<h3 id="technical-specification">Technical Specification</h3>
+<ul>
+<li>240x320 pixel display screen with touchscreen capabilities.</li>
+<li>Open source graphics library provided by adafruit.</li>
+<li>4 white-LED backlight providing brightness with individual pixel RGB color support.</li>
+<li>fastSPI communication standard used for a fast and responsive UI.</li>
+<li>screen UI and logos designed in Lopaka.app.</li>
+<li>screen development done on wokwi.com.</li>
+</ul>
+<h3 id="design-choices">Design Choices</h3>
+<p>Multiple factors went into the decision for the user interface layout. At the top of the list, visual clarity was the number one priority.</p>
+<p>The embedded electronics use the screen in a horizontal layout, with the longest part of the screen being at the top and bottom. This provided us with a large canvas to give the split time and elapsed time equal room, while giving away most of the screen realestate to the strokes per minute counter.</p>
+<p>Although capable of displaying colors, the UI is primarily using black and white to display the elements. This was done to ensure proper visibility while working on a rowboat, as adding color to the text or the numbers would make it harder to read.</p>
+<p>Even though the screen is capable of touchscreen funciontality, we have decided against using it, since wrong inputs could occur due to the nature of the wet environment that the product would be in.</p>
+<p>The initial screen layout consisted of a top bar, for displaying the time, and equal-space segments for the strokes per minute, split and elapsed time.</p>
+<p><img src="display_1.png" alt="Initial Display UI Prototype">
+After review and feedback, this screen layout proved suboptimal. The most important piece of information on the screen for a rower will be the strokes per minute. Even though it is displayed as the biggest element, it still might not be clear enough for the number to be glanced at from a distance, or if the screen gets wet. Additionally, the font chosen proved not legible enough, especially since the same font was used for the text and the numbers. This led to many rough pixelated edges, making it harder to see the information needed.</p>
+<p>The final UI screen builds upon the feedback received in all aspects.</p>
+<ul>
+<li>The &quot;S/M&quot; label was made smaller and moved to the far side to the right of the screen, while the counter was made almost twice as big.</li>
+<li>The font for the numbers was changed to a much more simplistic and sleeker font, allowing for easy reading of the numbers while under stress.</li>
+<li>The split time and elapsed time have been moved to their own section and are much smaller since, while this information is good to have, it is not the main priority of the rower.</li>
+<li>Once our communication protocol was chosen, a wifi logo was added to the top bar of the display.</li>
+</ul>
+<p><img src="display_2.png" alt="Final Iteration of Display UI"></p>
+<h3 id="tools-functions-and-workflow">Tools, Functions and Workflow</h3>
+<p>When the final rendition of the UI was settled, work began on creating update functions for each element. The focus was on providing update functions to change the main UI elements pertaining to rowing, and the option to change all of these with a single function call. More functions were added in the final design as to change the color of the Wifi symbol to show when data transfer is ready, and for changing the current time in the top left.</p>
+<ul>
+<li><code>void show_ui(tft)</code> initial set up of the UI and their elements, like wifi, battery, timer, strokes, split and time.</li>
+<li><code>void splashscreen(tft)</code> displays the logo at startup.</li>
+<li><code>void update_timer(tft, time)</code> updates the total time elapsed screen element.</li>
+<li><code>void update_split(tft, split)</code> updates the split time screen element.</li>
+<li><code>void update_strokes(tft, strokes)</code> updates the strokes per minute screen element.</li>
+<li><code>void update_screen(tft, strokes, split, time)</code> combines the 3 functions above into 1 for easily updating the main UI elements with one command.</li>
+</ul>
+<p>Physical access to the board was limited, so to test out the UI, the code, and to ensure everything displayed properly, an esp32 emulator website <a href="https://wokwi.com/">wokwi.com</a> was used. This website allowed us to work in parallel and then sync our work together using git.</p>
+<p><img src="display_3.png" alt="Final Iteration of Display UI"></p>
+<h3 id="ui-and-logo">UI and Logo</h3>
+<p><a href="https://lopaka.app/">lopaka.app</a> is a webapp enabling an easy and straightforward process to designing screen interfaces for embedded electronics. Using this website, we were able to draft and iterate upon multiple screen layouts.</p>
+<p>The website has a feature that allows for image uploads for creating custom logos. In reality, this feature is built upon the adafruit graphics library and image reader library, meaning that while helpful, the logo import and UI design could have been done without reliance on this software.</p>
+<p><img src="display_4.png" alt="Final Iteration of Display UI"></p>
+<p>The final aspect of UI development was the splashscreen greeter. Once the logos were finished, the final choice for which logo to use came down to the two that can be seen above. We decided on going the second logo, mentioning how we might benefit from a simpler and sleeker logo choice, especially when displayed on a small screen.</p>
+<h2 id="api-database-and-cicd">API, Database and CI/CD</h2>
+<h3 id="preface">Preface</h3>
+<p>Heb Slyusar owned the backend API, database schema and migrations, and the CI/CD pipeline for Gondolier. This part of the project turned authenticated mobile app actions into persisted rowing activities, social feed data, secure file access, and a repeatable path from source control to a deployed service.</p>
+<p><em>Decision and trade-off.</em> we kept this subsystem focused on the implemented MVP rather than a larger platform design. That gave us a small and understandable backend surface that supported the app and report requirements without spending project time on infrastructure we did not need to demo.</p>
+<h3 id="system-architecture">System Architecture</h3>
+<p>The backend is organised as a single Go service in <code>app/api</code>, backed by hosted Supabase services for authentication, PostgreSQL, and object storage. Deployment is handled separately from the data layer: the API is built and deployed to Render, while Supabase remains the managed provider for identity, database, and storage concerns.</p>
+<p>Architecture figure:</p>
+<pre class="hljs"><code><div>+------------------+        HTTPS + Bearer JWT / WebSocket        +----------------------+
+| Flutter mobile   | -------------------------------------------&gt; | Go API (Gin)         |
+| application      |                                              | hosted on Render     |
++------------------+                                              +----------+-----------+
+                                                                              |
+                              +-----------------------------------------------+----------------------------------+
+                              |                                               |                                  |
+                              v                                               v                                  v
+                    +---------------------+                        +---------------------+            +---------------------+
+                    | Supabase Auth       |                        | Supabase Postgres   |            | Supabase Storage    |
+                    | JWKS token verify   |                        | app data + RLS      |            | avatars + images    |
+                    +---------------------+                        +---------------------+            +---------------------+
+
++------------------+                test / build / deploy hook                +----------------------+
+| GitHub Actions   | -------------------------------------------------------&gt; | Render deployment    |
++------------------+                                                          +----------------------+
+</div></code></pre>
+<p>Go and Gin were chosen because the service only needed a small number of explicit routes, middleware, and query paths, and the code could stay in one binary without a large framework. Supabase reduced operational complexity by providing managed auth, Postgres, and storage in one place. Render was a practical fit for the API because it supports a simple deploy-hook workflow and a lightweight hosted demo environment.</p>
+<p><em>Decision and trade-off.</em> This architecture deliberately prefers managed services over a fully self-hosted stack. The trade-off is less control over every layer, but in return we gained faster delivery, simpler environment setup, and tighter integration between auth, storage, and database security.</p>
+<h3 id="api-design-and-implementation">API Design and Implementation</h3>
+<p>The HTTP API is wired in <code>app/api/cmd/server/main.go</code>. Routes are grouped under <code>/api/v1</code>, public health checks are exposed without authentication, and all activity, follow, metrics, files, and websocket endpoints are protected by JWT middleware. The request flow is consistent: middleware authenticates the caller, handlers validate route parameters and JSON payloads, and the <code>activityStore</code> repository performs database access and maps rows back into API response models.</p>
+<table>
+<thead>
+<tr>
+<th>Interface</th>
+<th>Auth</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /health</code>, <code>GET /api/v1/health</code></td>
+<td>No</td>
+<td>Health checks for local use, uptime probes, and hosted deployment monitoring</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/activities</code></td>
+<td>Yes</td>
+<td>List visible activities for the authenticated user using <code>following</code>, <code>global</code>, or <code>friends</code> scope</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/activities</code></td>
+<td>Yes</td>
+<td>Create an activity with validated visibility, optional team ownership, and optional route GeoJSON</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/activities/:id</code></td>
+<td>Yes</td>
+<td>Fetch one visible activity by UUID</td>
+</tr>
+<tr>
+<td><code>PATCH /api/v1/activities/:id/like</code></td>
+<td>Yes</td>
+<td>Apply an idempotent like and return refreshed counters</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/follows/suggestions</code></td>
+<td>Yes</td>
+<td>Return suggested profiles to follow, with bounded limit parsing</td>
+</tr>
+<tr>
+<td><code>PUT /api/v1/follows/:user_id</code>, <code>DELETE /api/v1/follows/:user_id</code></td>
+<td>Yes</td>
+<td>Idempotent follow and unfollow operations</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/metrics/summary</code></td>
+<td>Yes</td>
+<td>Aggregate workouts between <code>from</code> and <code>to</code> RFC3339 timestamps</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/files/upload-url</code>, <code>POST /api/v1/files/download-url</code></td>
+<td>Yes</td>
+<td>Generate signed storage URLs for objects owned by the authenticated user</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/ws</code></td>
+<td>Yes</td>
+<td>Open an authenticated websocket for realtime feed and status events</td>
+</tr>
+</tbody>
+</table>
+<p>Several endpoint behaviours were designed to keep clients simple and responses predictable. <code>GET /api/v1/activities</code> defaults to the <code>following</code> feed scope, while <code>global</code> and <code>friends</code> are explicitly parsed and rejected if invalid. <code>PUT</code>/<code>DELETE</code> follow operations and activity likes are idempotent, which means the client can safely retry requests without creating duplicate state. Metrics requests require RFC3339 timestamps and reject inverted date ranges at the handler level before a database query is attempted.</p>
+<p>The activity creation path also normalises route data before persistence. The server accepts a GeoJSON <code>LineString</code>, a <code>Feature</code> containing a <code>LineString</code>, or a <code>FeatureCollection</code> that includes one, then rewrites that payload into a canonical <code>LineString</code> object. This prevents downstream code and SQL functions from having to support multiple route shapes. Signed file URLs follow the same pattern of bounded behaviour: expiry defaults to 600 seconds, is clamped to the range 60-3600 seconds, and only returns URLs for valid object paths. Realtime support is intentionally small and explicit, with websocket channels for <code>feed</code>, <code>status</code>, and a <code>notifications</code> placeholder, all using a common <code>{channel, type, timestamp, payload}</code> envelope.</p>
+<p><em>Decision and trade-off.</em> I chose explicit handler validation and small repository methods instead of a more abstract service stack. The code is more repetitive, but every route's behaviour, validation rule, and failure mode is easy to trace, which was a better fit for a project that needed clarity more than abstraction.</p>
+<h3 id="authentication-authorization-and-storage-security">Authentication, Authorization, and Storage Security</h3>
+<p>Authentication is based on Supabase access tokens, but the Go API verifies those tokens itself rather than delegating every request to another service. On each authenticated request the middleware extracts <code>Authorization: Bearer &lt;token&gt;</code>, decodes the JWT header, fetches the correct RSA public key from Supabase's JWKS endpoint, verifies the RS256 signature, and validates the important claims: <code>exp</code>, <code>nbf</code>, <code>iat</code>, and, when configured, <code>iss</code> and <code>aud</code>. Once validated, the token's <code>sub</code> claim becomes the backend user identity stored in Gin context as <code>auth.user_id</code>.</p>
+<p>This approach keeps identity handling simple in the rest of the backend. Handlers and repositories never need to trust user IDs from the request body; they always derive the acting user from the verified token subject. Activity visibility is enforced in two layers. At application level, feed and detail queries are written so that a user only sees their own activities, public activities, followed-user activities with <code>followers</code> visibility, or team activities when they are a team member. At database level, row-level security is enabled on <code>public.activities</code> and mirrors those same visibility rules with policies based on <code>auth.uid()</code>.</p>
+<p>Storage security follows a similar pattern. Supabase storage buckets <code>avatars</code> and <code>workout-images</code> are private, and SQL policies on <code>storage.objects</code> only permit access when the object's first path segment matches the authenticated user's UUID. The API then adds a second check when generating signed URLs: the requested object path must begin with <code>&lt;user_uuid&gt;/...</code>, must not contain invalid segments such as <code>..</code>, and must use forward slashes. This extra validation is necessary because signed URL generation uses the Supabase service role and would otherwise bypass normal row-level access checks.</p>
+<p><em>Decision and trade-off.</em> Manual JWKS verification required more code than using a shared secret or opaque auth proxy, but it kept the API independent, avoided storing a JWT signing secret in the service, and made the trust boundary explicit. The trade-off is that security logic has to be implemented carefully, which is why both middleware checks and database policies were used.</p>
+<h3 id="database-schema-and-migration-decisions">Database Schema and Migration Decisions</h3>
+<p>The schema is relational and centred on activities, users, and simple social interactions. UUID primary keys were used throughout because they work cleanly across mobile clients, backend services, and Supabase authentication. The core entities are summarised below.</p>
+<table>
+<thead>
+<tr>
+<th>Entity</th>
+<th>Purpose</th>
+<th>Key relations and details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>profiles</code></td>
+<td>Public-facing user profile information</td>
+<td>Primary key also references <code>auth.users(id)</code></td>
+</tr>
+<tr>
+<td><code>teams</code></td>
+<td>Optional grouping for shared activity visibility</td>
+<td>Owned by one profile</td>
+</tr>
+<tr>
+<td><code>team_members</code></td>
+<td>Membership join table for team access</td>
+<td>Composite key <code>(team_id, user_id)</code> with role constraint</td>
+</tr>
+<tr>
+<td><code>activities</code></td>
+<td>Main workout/feed record</td>
+<td>References <code>profiles</code>, optional <code>team_id</code>, stores <code>route_geojson</code></td>
+</tr>
+<tr>
+<td><code>activity_samples</code></td>
+<td>Raw per-stroke telemetry for one activity</td>
+<td>Composite key <code>(activity_id, stroke_timestamp_ms)</code> with cumulative distance and derived coordinates</td>
+</tr>
+<tr>
+<td><code>follows</code></td>
+<td>Directed social graph</td>
+<td>Prevents self-follow via check constraint</td>
+</tr>
+<tr>
+<td><code>activity_likes</code></td>
+<td>Idempotent activity likes</td>
+<td>Composite key <code>(user_id, activity_id)</code></td>
+</tr>
+<tr>
+<td><code>activity_comments</code></td>
+<td>Comment records for activities</td>
+<td>Stores body text and creation timestamp</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>activities</code> table carries several constraints that directly support the product behaviour. Visibility is constrained to <code>private</code>, <code>followers</code>, <code>public</code>, or <code>team</code>. <code>team_id</code> may only be present for <code>team</code> visibility. <code>route_geojson</code> is stored as <code>jsonb</code> but is checked to ensure it is shaped as a <code>LineString</code> with a <code>coordinates</code> array. Query performance is supported by indexes on <code>(user_id, start_time desc)</code>, <code>(team_id, start_time desc)</code>, and <code>(visibility, start_time desc)</code>, because those match the main feed and detail access paths. The social tables also add indexes for follow lookups, likes, and comments so counts and visibility checks do not require full scans.</p>
+<p>The migration history shows how the schema evolved with the product:</p>
+<ol>
+<li><code>000001_initial_schema.up.sql</code> created the social and activity tables, team membership automation, and activity row-level security policies.</li>
+<li><code>000002_storage_policies.up.sql</code> locked down Supabase storage buckets and object ownership rules.</li>
+<li><code>000003_activity_samples_stroke_distance.up.sql</code> changed <code>activity_samples</code> from generic per-sample metrics to raw stroke timestamps plus cumulative distance, and introduced SQL functions to recompute activity-level aggregates.</li>
+<li><code>000004_activity_sample_coordinates.up.sql</code> added longitude, latitude, and coordinate-source columns and computed stroke locations by interpolating along the stored route geometry.</li>
+<li><code>000005_profiles_on_auth_signup.up.sql</code> added a trigger and backfill query so new Supabase auth users automatically get a matching profile row.</li>
+</ol>
+<p>Two schema decisions are especially important for correctness. First, <code>profiles</code> are tied directly to Supabase auth users, which avoids custom identity reconciliation logic. Second, the database does not treat route data as free-form JSON; it constrains and normalises the shape early so later logic can rely on it.</p>
+<p><em>Decision and trade-off.</em> I chose a strongly constrained relational schema instead of storing most app state in loosely structured JSON documents. That makes migrations and schema changes more deliberate, but it gives clearer integrity guarantees and far simpler query logic for feeds, follows, and derived workout summaries.</p>
+<h3 id="database-automation-and-derived-metrics">Database Automation and Derived Metrics</h3>
+<p>One of the most useful database decisions was to move derived workout metrics into SQL functions and triggers. <code>activity_samples</code> stores raw stroke events using <code>stroke_timestamp_ms</code> and cumulative <code>distance_m</code>, while the database computes activity-level fields such as <code>duration_seconds</code>, <code>distance_m</code>, <code>avg_split_500m_seconds</code>, and <code>avg_stroke_spm</code>. The core function <code>recompute_activity_metrics_from_samples</code> reads the minimum and maximum stroke timestamps, counts strokes, calculates elapsed time, and writes the aggregate values back to the parent row in <code>public.activities</code>.</p>
+<p>This means the mobile app and API do not need to recalculate those values on every request. Once samples are inserted, updated, or deleted, trigger functions refresh the activity summary automatically. The later coordinate migration extends the same idea to spatial data. <code>recompute_activity_sample_coordinates</code> reads the activity route, calculates segment lengths with a Haversine helper, and interpolates each stroke position along the route based on cumulative distance. A separate trigger also recomputes sample coordinates if the stored route geometry changes.</p>
+<p>Persisting derived metrics in the database creates one consistent source of truth for feed cards, detail screens, and summary endpoints. The backend can query already-computed workout values, while <code>activity_samples</code> still preserves the raw timeline needed for richer future analysis. This split between raw data and derived aggregates is a common pattern in telemetry systems because it keeps read paths fast without discarding the underlying event history.</p>
+<p><em>Decision and trade-off.</em> Database-side derivation makes reads simpler and keeps client-visible workout values consistent, but it pushes more logic into migrations and trigger functions. I accepted that trade-off because the calculations are tightly coupled to persisted rowing data and are safer when enforced centrally rather than duplicated across clients.</p>
+<h3 id="cicd-deployment-and-local-development">CI/CD, Deployment, and Local Development</h3>
+<p>Operationally, the backend is designed to be easy to run locally and predictable to deploy. The <code>app/Makefile</code> auto-loads <code>app/api/.env.dev</code> when present and exposes a small set of commands for the most common workflows.</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Local backend commands</td>
+<td><code>api-run</code>, <code>api-start</code>, <code>api-test</code>, <code>api-vet</code>, <code>api-build</code></td>
+</tr>
+<tr>
+<td>Database migration commands</td>
+<td><code>migrate-up</code>, <code>migrate-down</code>, <code>migrate-version</code></td>
+</tr>
+<tr>
+<td>Required runtime configuration</td>
+<td><code>DATABASE_URL</code> or <code>DB_URL</code>, and <code>SUPABASE_JWKS_URL</code></td>
+</tr>
+<tr>
+<td>Optional runtime configuration</td>
+<td><code>SUPABASE_URL</code>, <code>SUPABASE_SERVICE_ROLE_KEY</code>, <code>JWT_ISSUER</code>, <code>JWT_AUDIENCE</code>, <code>PORT</code></td>
+</tr>
+<tr>
+<td>Continuous integration</td>
+<td><code>.github/workflows/ci.yml</code> runs Go test/vet/build and Flutter pub get/analyze/test on pull requests and pushes to <code>main</code></td>
+</tr>
+<tr>
+<td>Continuous deployment</td>
+<td><code>.github/workflows/deploy-go-api.yml</code> builds the Go server and triggers a Render deploy hook on <code>main</code> or manual dispatch</td>
+</tr>
+<tr>
+<td>Hosting split</td>
+<td>Render hosts the Go API; Supabase hosts auth, Postgres, and storage</td>
+</tr>
+</tbody>
+</table>
+<p>The CI workflow is intentionally split into a Go job and a Flutter job, so backend and app checks fail independently and provide clearer feedback. The deployment workflow keeps the release logic deliberately small: it builds the server and then triggers Render only if <code>RENDER_DEPLOY_HOOK_URL</code> is configured, otherwise it logs that deploy was skipped. That keeps the repository safe to run in environments where deployment secrets are intentionally absent.</p>
+<p>For local development, the project uses hosted Supabase services rather than a local Docker Postgres container. Migrations are run against the Supabase Session Pooler connection string, which avoids reproducing auth, storage, and database infrastructure locally and keeps development closer to the hosted environment. This is especially useful in a student project where time spent on local infrastructure would have displaced time from application and hardware work.</p>
+<p><em>Decision and trade-off.</em> I prioritised a small operational surface: one Makefile, GitHub Actions for validation, and a deploy hook for release. The trade-off is that the deployment process is not a sophisticated release pipeline, but it is easy to understand, easy to troubleshoot, and appropriate for an MVP and demonstration environment.</p>
+<h3 id="testing-trade-offs-and-future-work">Testing, Trade-offs, and Future Work</h3>
+<p>The repository includes automated backend tests that match the implemented feature set. <code>handlers_test.go</code> covers route behaviour, request validation, scope parsing, file URL handling, and websocket subscription filtering. <code>auth_test.go</code> checks bearer token extraction and JWT claim validation. <code>repository_test.go</code> checks environment handling, query parsing, and database row scanning into API models. Together these tests focus on the parts of the service that are most likely to break during normal iteration: handler contracts, authentication rules, repository mapping, and realtime channel behaviour.</p>
+<p>There are also clear limits to the current backend. The OpenAPI file documents a broader long-term surface area than the implemented MVP, so in practice <code>main.go</code> and the committed migrations are the source of truth for what currently works. The websocket layer includes a <code>notifications.placeholder</code> event but no full notification producer yet. Flutter documentation also notes that file upload/download and websocket integration are deferred beyond the current phase, which means the backend is ahead of the mobile client in those areas. Finally, the deployment approach is intentionally simple and does not yet include staged environments, rollback orchestration, or more advanced release gates.</p>
+<p>This chapter therefore describes committed interfaces, committed tests, and committed workflows rather than claiming a fresh point-in-time local rerun of every backend check. That keeps the report accurate and tied to the repository state instead of overstating verification.</p>
+<p><em>Decision and trade-off.</em> I treated testing and delivery as part of the product rather than as cleanup work at the end. The trade-off is that some future-facing features remain only partially integrated, but the implemented backend behaviour is better specified, better tested, and easier for another engineer to continue from.</p>
+<h2 id="appendixes">Appendixes</h2>
+<h3 id="appendix-a---file-map-and-responsibilities">Appendix A - File map and responsibilities</h3>
 <ul>
 <li><code>embedded-code.ino</code>: application entrypoint, state machine</li>
 <li><code>accelerometer.h</code>: IMU driver and buffering</li>
@@ -208,29 +837,29 @@ $$</p>
 <li><code>model.h</code>, <code>model_data.h</code>, <code>model.tflite</code>: model binary and inference glue</li>
 <li><code>model.h</code> contains wrapper functions: <code>void model_init(); float model_infer(float *input);</code></li>
 </ul>
-<p><strong>Appendix B - How stroke detection works (algorithm)</strong></p>
+<h3 id="appendix-b---how-stroke-detection-works-algorithm">Appendix B - How stroke detection works (algorithm)</h3>
 <ol>
-<li>Preprocess samples: compute magnitude \= sqrt(ax^2 + ay^2 + az^2) and subtract a rolling mean to remove gravity.</li>
+<li>Preprocess samples: compute magnitude = sqrt(ax^2 + ay^2 + az^2) and subtract a rolling mean to remove gravity.</li>
 <li>Form windows of 850 samples and normalize each window.</li>
 <li>Call TFLite Micro to get stroke probability p.</li>
 <li>If p &gt; threshold and not in the refractory window, store stroke event.</li>
 </ol>
-<p><strong>Appendix C - Contributors and references</strong></p>
+<h3 id="appendix-c---contributors-and-references">Appendix C - Contributors and references</h3>
 <p>Contributors:</p>
 <ul>
 <li>Hugo Guenebaut - Embedded systems lead</li>
 <li>Emin Aksoy - Machine learning engineer</li>
 <li>Nixie - Embedded UI designer</li>
-<li>
-<h2>Mark - Communications and radio engineer</h2>
-</li>
+<li>Mark - Communications and radio engineer</li>
+<li></li>
 </ul>
-<p>References:</p>
+<h3 id="references">References</h3>
 <ul>
 <li>TensorFlow Lite Micro documentation - <a href="https://www.tensorflow.org/lite/micro">https://www.tensorflow.org/lite/micro</a></li>
 <li>ESP32-S3 datasheet - <a href="https://documentation.espressif.com/esp32-s3_datasheet_en.pdf">https://documentation.espressif.com/esp32-s3_datasheet_en.pdf</a></li>
 <li>QMI8658 datasheet - <a href="https://qstcorp.com/upload/pdf/202202/QMI8658C%20datasheet%20rev%200.9.pdf">https://qstcorp.com/upload/pdf/202202/QMI8658C%20datasheet%20rev%200.9.pdf</a></li>
 <li>ILI9431 datasheet - <a href="https://cdn-shop.adafruit.com/datasheets/ILI9341.pdf">https://cdn-shop.adafruit.com/datasheets/ILI9341.pdf</a></li>
 </ul>
+
 </body>
 </html>
