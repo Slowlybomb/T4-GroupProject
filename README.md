@@ -1,13 +1,11 @@
-# Gondolier
+# Gondolier - Group 4 - Team Project
 
 An Open Source Rowing Monitor
-
-## Group 4
 
 Project Logo
 ![Gondolier Logo](report/gondolierLogo.png)
 
-### Group Members
+## Group Members
 
 | Member | GitHub |
 | --- | --- |
