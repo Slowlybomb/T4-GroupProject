@@ -24,7 +24,7 @@ class WeeklyProgressScreen extends StatelessWidget {
           children: [
             _StatCard(
               title: 'This Week',
-              children: [
+              children: const [
                 _BigStat(label: 'Distance', value: '48.9 km', icon: Icons.directions_boat),
                 _BigStat(label: 'Activities', value: '5', icon: Icons.event),
                 _BigStat(label: 'Time', value: '3h 22m', icon: Icons.timer),
@@ -34,7 +34,7 @@ class WeeklyProgressScreen extends StatelessWidget {
             const SizedBox(height: 20),
             _StatCard(
               title: 'Monthly Overview',
-              children: [
+              children: const [
                 _BigStat(label: 'Distance', value: '192 km', icon: Icons.directions_boat),
                 _BigStat(label: 'Activities', value: '16', icon: Icons.event),
               ],
@@ -56,12 +56,12 @@ class WeeklyProgressScreen extends StatelessWidget {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
+                children: const [
+                  Text(
                     'Weekly Distance',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
