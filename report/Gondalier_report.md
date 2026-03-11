@@ -139,9 +139,61 @@ $$
 
 4. Inference: The TFLite Micro interpreter (`model.h`) runs the model on the input window and returns a probability for a stroke. The firmware compares the probability to a threshold and uses a small state machine with hysteresis to avoid false positives from boat motion.
 
-1. Event generation
+5. Event generation
+
+6. Sync: When a session is complete, the user can request the session over 
+   bluetooth, and the device will stream metadata and stroke timestamps to the phone app for storage and analysis.
 
 Confirmed strokes are timestamped and added to the session buffer. Stroke rate (spm) and split time are computed using recent stroke intervals.
+
+**Bluetooth Low Energy (BLE) Sync**
+Gondolier makes use of the Bluetooth Low Energy capabilities of the on-boat ESP32-S3 to sync session data to a phone app. The ESP32-S3 acts as a BLE peripheral/server, while the accompanying phone acts as the central/client. The phone initiates transfer by writing from a command, and Gondolier streams the session back as a sequence of binary notification packets. BLE was chosen for its universal support as well as its increased energy efficiency— suitable for a batter-operated device— and support for (small) data transfer when compared to Bluetooth Classic.
+
+BLE roles and lifecycle
+1. Advertising: The device advertises as `Gondolier` to nearby devices and 
+   includes a custom service UUID, but does not send an advertising response 
+
+2. Connection: The client connects and performs the GATT discovery process
+
+3. Requests: The client writes `GET_SESSION` to the command characteristic
+
+4. Data Transfer: The device sets status to `SENDING` and notifies packets 
+   on the data characteristic
+
+5. Finalising Data: The device sends an ender marker packet— `0xFF`— and 
+   sets the status back to `IDLE`
+
+6. On a disconnect, the device resumes advertising automatically
+
+<img src="[TODO]" alt="Time Diagram of a typical Gondolier BLE Connection" width="500"/>
+
+
+
+- GATT service and characteristics
+The `networking.h` header implements a simple GATT service with characteristics for session metadata and stroke records:
+
+A single custom service is exposed:
+
+| Service UUID | 12345678-1234-1234-1234-123456789abc |
+|--------------|--------------------------------------|
+
+And three characteristics can be found in the GATT profile:
+
+| **Characteristic** | **UUID**                                                                   | **Possible Values**                |
+|--------------------|----------------------------------------------------------------------------|------------------------------------|
+| Command            | 12345678\-1234\-1234\-1234\-123456789<span style="color:orange">ab0</span> | GET\_SESSION \| PING               |
+| Data               | 12345678\-1234\-1234\-1234\-123456789<span style="color:orange">ab1</span> | \[Raw Data\]                       |
+| Status             | 12345678\-1234\-1234\-1234\-123456789<span style="color:orange">ab2</span> | IDLE \| SESSION\_READY \| SENDING  |
+
+Where:
+- Command characteristic is used by thed client to send ASCII commands
+- Data characteristic is used by the device to stream binary pakcets containing metadata and stroke timestamps
+- Status characteristic is a human-readable status string
+
+
+<img src="[TODO]" alt="Structure of a data packet" width="700"/>
+
+
 
 **Firmware Structure and Files**
 
