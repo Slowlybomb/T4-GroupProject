@@ -446,7 +446,7 @@ At the widget level, the app leans on `Consumer` (and can be extended with `Sele
 
 _Decision and trade-off._ We chose `ChangeNotifier + Provider` over heavier patterns (Redux/BLoC) to keep the model simple for the team. In return we accept a bit more discipline in how we scope `Consumer`/`Selector` usage so that performance in long lists stays acceptable and rebuilds are kept close to the widgets that actually changed, optimizing rebuilds from **O(N) vs O(1) Rebuilds** . 
 
---- 
+
 ## Authentication 
 
 Authentication is handled via Supabase (`supabase_flutter`) and wrapped behind an `AuthRepository` interface. 
@@ -466,7 +466,7 @@ At startup, `RowingApp` selects a single route state:
 - Auth screen (login/sign-up). 
 - Home shell (`MainNavigationHub`). 
 
---- 
+
 
 ## Feed: data → state → UI 
 The feed implementation is deliberately layered so UI widgets stay simple and testable: 
@@ -512,7 +512,7 @@ The UI shares a consistent palette and component styling through:
 
 The app leans on Flutter’s composition model (small widgets, predictable layout) to keep screens readable and easy to iterate on during a group project. 
 
---- 
+
 
 ## BLE Sync (Device → Phone) 
 
@@ -547,7 +547,6 @@ This implementation uses canvas drawing primitives directly rather than a charti
 
 _Decision and trade-off._ `CustomPainter` provided predictable visuals and removed dependency weight. The trade-off is that interactive chart features (pan/zoom, tooltips) would require additional engineering compared with adopting an off-the-shelf chart library. 
 
---- 
 
 ## Dependencies  
 
@@ -567,7 +566,7 @@ Key packages listed in `pubspec.yaml`:
   - `csv` (local CSV parsing utilities / demo assets) 
 - Sharing: 
   - `share_plus` (planned sharing UX; some screens currently use clipboard copy for links) 
---- 
+
 
 ## Future Work and Open Questions 
 
