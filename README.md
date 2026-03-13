@@ -379,6 +379,224 @@ This chapter therefore describes committed interfaces, committed tests, and comm
 
 _Decision and trade-off._ I treated testing and delivery as part of the product rather than as cleanup work at the end. The trade-off is that some future-facing features remain only partially integrated, but the implemented backend behaviour is better specified, better tested, and easier for another engineer to continue from.
 
+## Phone Application (Flutter) 
+This section documents the Flutter phone application in `app/flutter_app`. The embedded Gondolier device provides immediate on‑boat feedback while the phone app is responsible for **authentication**, **session sync**, **visualisation**, and **social sharing**. 
+The intent is to explain what is implemented, why it was built that way, and where the boundaries are between the app, the embedded firmware, and the backend API. 
+
+
+### Why Flutter  
+
+For the mobile client we consciously chose **Flutter** over a React/React Native/React Web stack for its features like: 
+**BLE ecosystem maturity**: `flutter_blue_plus` and `permission_handler` provide a straightforward API for scanning, connecting, and requesting the Android runtime permissions we need (`bluetoothScan`, `bluetoothConnect`, `locationWhenInUse`). React stacks can do this as well, but would require bridging through different native modules; the Flutter approach let the team move faster  
+
+**Single Codebase, Multiple Platforms**: This is the most significant advantage. Write your code once in Dart, and deploy it on iOS, Android, web, desktop (Windows, macOS, Linux), and even embedded devices. This drastically reduces development time, cost, and the complexity of managing different development teams and codebases. Ideal for startups wanting to hit the market quickly with a minimum viable product (MVP). 
+
+### Summary 
+The Flutter application provides: 
+
+- **Supabase authentication UI** (email/password, optional email verification) and account updates. 
+- A **feed-style activity UI** with a repository boundary and a local “demo/offline” fallback path for reliable showcases. 
+- A **Bluetooth Low Energy (BLE) sync workflow** that discovers the Gondolier device, connects, and downloads a completed session. 
+- **Session analytics visualisations** rendered directly on the Flutter canvas using `CustomPainter` allowing users to analyse their performance. 
+
+
+The repository currently contains an **Android Flutter scaffold** (`android/` exists). The codebase is structured so it can be migrated to additional Flutter targets later. 
+
+
+## Architecture and Components 
+### Folder map and responsibilities 
+```text 
+
+lib/
+  main.dart                         # Boot: runtime config + Supabase init + DIO
+  app/ 
+    app.dart                         # RowingApp: route selection + root providers 
+    providers.dart                   # Provider wiring (controllers / repositories) 
+    routes.dart                      # Simple onboarding/auth/home routing 
+    shell/main_navigation_shell.dart # Bottom navigation + selected-post overlay 
+    theme.dart                       # Material theme 
+  core/ 
+    config/                          # --dart-define config and auth callback config 
+    locator.dart                     # Dependency container (Dio, repos, auth) 
+    network/                         # Dio client, auth interceptor, ApiError mapping 
+    theme/                           # App colour palette 
+    widgets/                         # Shared widgets (buttons, headers, rows) 
+  data/ 
+    models/                          # API DTOs and UI models 
+    repositories/                    # Supabase auth repository + activity API repository 
+  features/ 
+    onboarding/                      # Carousel + optional demo login 
+    auth/                            # Login + sign-up UI 
+    feed/                            # Feed screen + controller + UI widgets 
+    activity_detail/                 # Detail screen + stroke analysis charts 
+    ble/                             # BLE scan + session download screens 
+    profile/                         # Profile/stats and settings 
+``` 
+### State management 
+State is managed using **Provider** (`provider`) with `ChangeNotifier` as the core primitive: 
+
+- `FeedController` loads posts, tracks loading/error state, and stores the currently selected post. 
+- `OnboardingController` stores onboarding selections for later use. 
+
+At the widget level, the app leans on `Consumer` (and can be extended with `Selector`) to **localise rebuilds**: 
+
+- Parent scaffolds (such as `FeedScreen` and `MainNavigationHub`) avoid reading mutable state directly in their `build` methods and instead delegate reactive pieces to narrow `Consumer` scopes. This keeps navigation, app bars, and other chrome from rebuilding when a single post changes. 
+
+- Long, scrollable structures such as the feed `SliverList` are built so that the list itself is created once, and only the **leaf widgets** listen to the specific slice of state they need. A clear example comes from the activity feed, by using scoped Selector widgets within each ActivityCard, updating a 'Like' count on one post does not trigger a rebuild of the other 50 posts in the list.   
+
+_Decision and trade-off._ We chose `ChangeNotifier + Provider` over heavier patterns (Redux/BLoC) to keep the model simple for the team. In return we accept a bit more discipline in how we scope `Consumer`/`Selector` usage so that performance in long lists stays acceptable and rebuilds are kept close to the widgets that actually changed, optimizing rebuilds from **O(N) vs O(1) Rebuilds** . 
+
+
+## Authentication 
+
+Authentication is handled via Supabase (`supabase_flutter`) and wrapped behind an `AuthRepository` interface. 
+### Implemented flows 
+
+- **Login**: email/password (`signInWithPassword`). 
+- **Sign-up**: email/password with: 
+  - Immediate session creation when Supabase is configured to auto-confirm, or 
+  - Email verification flow when confirmation is required (UI provides “resend verification email”). 
+- **Account updates**: update name/email and optional password. 
+
+### Route selection (onboarding → auth → app) 
+
+At startup, `RowingApp` selects a single route state: 
+
+- Onboarding (first-run carousel). 
+- Auth screen (login/sign-up). 
+- Home shell (`MainNavigationHub`). 
+
+
+
+## Feed: data → state → UI 
+The feed implementation is deliberately layered so UI widgets stay simple and testable: 
+
+### Models and presentation adapters 
+
+- `ActivityDto` is the “transport model” used at the repository boundary. 
+- `ActivityModel` is a UI-friendly model used by cards and detail views. 
+
+The adapter `ActivityDto.toActivityModel()` formats values into display strings (distance, duration, split, stroke rate, timestamps) so widgets can render without duplicating formatting logic. 
+
+_Decision and trade-off._ Centralising formatting in the adapter keeps the widget tree clean and consistent, but it means display rules (units, rounding) live outside the view layer and must be updated there when UI requirements change. 
+
+### Controller state 
+
+`FeedController` manages: 
+- Loading and error state for the “Following” feed. 
+- The list of posts currently displayed. 
+- The currently selected post for the detail overlay.
+  
+The feed screen renders three tabs: 
+
+- **Following**: driven by `FeedController` and the repository. Which also Contains two additional sections; Who to Follow and Weekly Recap.
+  
+<img src="report/weekly_bubble.jpg" alt="Feed Screen" Height="200"/> <img src="report/weekly_summary_tab.jpg" alt="Profile screen" Height="400"/>
+
+
+- **Discover** use demo posts for UI completeness. 
+- **Your Posts**: which also use demo posts and include the BLE connection functionality.
+
+<img src="report/home_tab.jpg" height="200" /> <img src="report/yout_posts_tab.jpg" height="200" /> <img src="report/1000060904.jpg" height="200" />
+
+## Navigation, layout, and theming 
+### App shell and navigation 
+
+The app uses a simple route selection in `RowingApp` (onboarding/auth/home) and then a home “shell” widget (`MainNavigationHub`) with: 
+
+- A `BottomNavigationBar` for switching between **Feed** and **Profile**.
+
+<img src="report/lower_nav.jpg" alt="Bottom Navigation" height="200"/>
+
+*Under the **Profile tab** we are then able to find different data analytics, like all time records, a 12 week activity recap some challegenges, training log and a calendar for the month whit a monthly recap.*
+
+<img src="report/profile_top_tab.jpg" alt="Profile" height="400"/>
+  
+- A Top nav: that switches between the different screens **Following**, **Discover** and **Your Posts**. And displays the different posts accordingly per tab.
+<img src="report/top_nav.jpg" alt="Feed Navigation" height="200"/>
+
+- A stacked detail overlay when a post is selected (post details sit above the current tab without losing context). 
+<img src="report/detail_pots_tab.jpg" alt="Detail Post" height="400"/>
+
+_Decision and trade-off._ A stacked overlay provides a modern “tap into detail and back out” feel while keeping navigation wiring small. The trade-off is that deep-linking and back-stack behaviour is more manual than a full declarative router setup. 
+
+
+### UI styling and reusable widgets 
+
+The UI shares a consistent palette and component styling through: 
+
+- `core/theme/app_colour_theme.dart` 
+- Reusable widgets like `PrimaryButton`, `PostUserHeader`, and stats rows. 
+
+The app leans on Flutter’s composition model (small widgets, predictable layout) to keep screens readable and easy to iterate on during a group project. 
+
+
+
+## BLE Sync (Device → Phone) 
+
+The BLE sync UI lives in `features/ble/view/ble_session_screen.dart` and is designed to match the embedded BLE service defined in firmware (`networking.h`). 
+
+<img src="report/bluetooth_bubble.jpg" alt="Bluetooth Bubble" height="200"/>
+
+### Discovery and connection strategy 
+- **Scanning** uses `flutter_blue_plus` and filters by advertised device name (`"Gondolier"`). 
+- On Android, the app requests permissions up front: 
+  - `bluetoothScan` 
+  - `bluetoothConnect` 
+  - `locationWhenInUse` (required on many Android versions for scanning) 
+
+- Connection is retried up to 3 times with a short backoff, and the app attempts `requestMtu(512)` to increase payload efficiency where supported. 
+
+_Decision and trade-off._ We filter by device name to keep scanning UX since currently there is only 1 Gondolier. The trade-off is that name collisions are possible; a future version should filter by service UUID and/or validate the GATT service after connect. 
+
+### Stroke analysis charts 
+
+The detail view contains a “Stroke Analysis” section that renders two charts with a custom `CustomPainter`: 
+
+- Stroke rate over distance (synthetic curve shaped to resemble a realistic piece: ramp-up → steady → finish). 
+- Cumulative stroke count over time (slight S-curve). 
+<img src="report/Stoke Analysis.jpg" alt="Bluetooth Bubble" height="200"/>
+
+This implementation uses canvas drawing primitives directly rather than a charting package, giving full control over layout, labels, fill, and styling. 
+
+_Decision and trade-off._ `CustomPainter` provided predictable visuals and removed dependency weight. The trade-off is that interactive chart features (pan/zoom, tooltips) would require additional engineering compared with adopting an off-the-shelf chart library. 
+
+
+## Dependencies  
+
+Key packages listed in `pubspec.yaml`: 
+
+- UI / state: 
+  - `provider` (state management) 
+  - `smooth_page_indicator` (onboarding carousel indicator) 
+- Networking and backend: 
+  - `dio` (HTTP client) 
+  - `supabase_flutter` (auth/session management) 
+- BLE and permissions: 
+  - `flutter_blue_plus` (BLE scan/connect/notify) 
+  - `permission_handler` (Android runtime permissions) 
+- Mapping / data utilities: 
+  - `google_maps_flutter` (map widgets for route display where used) 
+  - `csv` (local CSV parsing utilities / demo assets) 
+- Sharing: 
+  - `share_plus` (planned sharing UX; some screens currently use clipboard copy for links) 
+
+
+## Future Work and Open Questions 
+
+- **Persist BLE downloads locally**: store downloaded sessions on-device so users can review them later without re-syncing. 
+- **Wire BLE sessions into the activity UI**: map `RowingSession` into the same UI models used by the feed/detail screens. 
+- **Route/GPS capture in the app**: replace the dummy route asset once real location capture (or import) is implemented. 
+- **Richer visual analytics**: add interactive chart affordances (range selection, tooltips) while keeping performance acceptable on mobile. 
+- **Navigation hardening**: add deep-linking and more explicit screen routes if the app grows beyond the current shell/overlay pattern. 
+
+ 
+
+ 
+
+ 
+
+ 
 ## Appendixes
 
 ### Appendix A \- File map and responsibilities
