@@ -491,16 +491,13 @@ The feed screen renders three tabs:
 
 - **Following**: driven by `FeedController` and the repository. Which also Contains two additional sections; Who to Follow and Weekly Recap.
   
-<img src="report/weekly_bubble.jpg" alt="Feed Screen" Height="200"/>
-<img src="report/weekly_summary_tab.jpg" alt="Profile screen" Height="400"/>
+<img src="report/weekly_bubble.jpg" alt="Feed Screen" Height="200"/> <img src="report/weekly_summary_tab.jpg" alt="Profile screen" Height="400"/>
 
 
 - **Discover** use demo posts for UI completeness. 
 - **Your Posts**: which also use demo posts and include the BLE connection functionality.
 
-<img src="report/home_tab.jpg" height="200" />
-<img src="report/yout_posts_tab.jpg" height="200" />
-<img src="report/discover_tab.jpg" height="200" />
+<img src="report/home_tab.jpg" height="200" /> <img src="report/yout_posts_tab.jpg" height="200" /> <img src="report/1000060904.jpg" height="200" />
 
 ## Navigation, layout, and theming 
 ### App shell and navigation 
@@ -558,6 +555,7 @@ The detail view contains a “Stroke Analysis” section that renders two charts
 
 - Stroke rate over distance (synthetic curve shaped to resemble a realistic piece: ramp-up → steady → finish). 
 - Cumulative stroke count over time (slight S-curve). 
+<img src="report/Stoke Analysis.jpg" alt="Bluetooth Bubble" height="200"/>
 
 This implementation uses canvas drawing primitives directly rather than a charting package, giving full control over layout, labels, fill, and styling. 
 
