@@ -486,22 +486,43 @@ _Decision and trade-off._ Centralising formatting in the adapter keeps the widge
 - Loading and error state for the “Following” feed. 
 - The list of posts currently displayed. 
 - The currently selected post for the detail overlay.
-- 
+  
 The feed screen renders three tabs: 
 
-- **Following**: driven by `FeedController` and the repository. 
-- **Discover** use demo posts for UI completeness. 
-- **Your Posts**: which also use demo posts and include the BLE connection functionality. 
+- **Following**: driven by `FeedController` and the repository. Which also Contains two additional sections; Who to Follow and Weekly Recap.
+  
+<img src="report/weekly_bubble.jpg" alt="Feed Screen" Height="200"/>
+<img src="report/weekly_summary_tab.jpg" alt="Profile screen" Height="400"/>
 
-<img src="report/home_tab.jpg" alt="Feed Screen" Height="400"/>
+
+- **Discover** use demo posts for UI completeness. 
+- **Your Posts**: which also use demo posts and include the BLE connection functionality.
+
+<img src="report/home_tab.jpg" height="200" />
+<img src="report/yout_posts_tab.jpg" height="200" />
+<img src="report/discover_tab.jpg" height="200" />
+
 ## Navigation, layout, and theming 
 ### App shell and navigation 
 
 The app uses a simple route selection in `RowingApp` (onboarding/auth/home) and then a home “shell” widget (`MainNavigationHub`) with: 
-- A `BottomNavigationBar` for switching between **Feed** and **Profile**. 
-- A stacked detail overlay when a post is selected (post detail sits above the current tab without losing context). 
-img src="report/lower_nav.jpg" alt="Bottom Navigation" Height="400"/>
+
+- A `BottomNavigationBar` for switching between **Feed** and **Profile**.
+
+<img src="report/lower_nav.jpg" alt="Bottom Navigation" height="200"/>
+
+*Under the **Profile tab** we are then able to find different data analytics, like all time records, a 12 week activity recap some challegenges, training log and a calendar for the month whit a monthly recap.*
+
+<img src="report/profile_top_tab.jpg" alt="Profile" height="400"/>
+  
+- A Top nav: that switches between the different screens **Following**, **Discover** and **Your Posts**. And displays the different posts accordingly per tab.
+<img src="report/top_nav.jpg" alt="Feed Navigation" height="200"/>
+
+- A stacked detail overlay when a post is selected (post details sit above the current tab without losing context). 
+<img src="report/detail_pots_tab.jpg" alt="Detail Post" height="400"/>
+
 _Decision and trade-off._ A stacked overlay provides a modern “tap into detail and back out” feel while keeping navigation wiring small. The trade-off is that deep-linking and back-stack behaviour is more manual than a full declarative router setup. 
+
 
 ### UI styling and reusable widgets 
 
@@ -517,7 +538,9 @@ The app leans on Flutter’s composition model (small widgets, predictable layou
 ## BLE Sync (Device → Phone) 
 
 The BLE sync UI lives in `features/ble/view/ble_session_screen.dart` and is designed to match the embedded BLE service defined in firmware (`networking.h`). 
-<img src="report/bluetooth_bubble.jpg" alt="Bluetooth Bubble" Height="400"/>
+
+<img src="report/bluetooth_bubble.jpg" alt="Bluetooth Bubble" height="200"/>
+
 ### Discovery and connection strategy 
 - **Scanning** uses `flutter_blue_plus` and filters by advertised device name (`"Gondolier"`). 
 - On Android, the app requests permissions up front: 
@@ -529,14 +552,6 @@ The BLE sync UI lives in `features/ble/view/ble_session_screen.dart` and is desi
 
 _Decision and trade-off._ We filter by device name to keep scanning UX since currently there is only 1 Gondolier. The trade-off is that name collisions are possible; a future version should filter by service UUID and/or validate the GATT service after connect. 
 
-## Session Visualisation and UI 
-The app uses a feed + detail pattern: 
-
-- **Feed**: shows activities in a scrollable layout with tabs (Following / Discover / Your Posts). Following is backed by the repository; Discover/Your Posts use demo data.
-<img src="report/top_nav.jpg" alt="Feed Navigation" Height="400"/>
-- **Detail overlay**: selecting a post displays a full-screen detail UI including stats and graphs. 
-
-
 ### Stroke analysis charts 
 
 The detail view contains a “Stroke Analysis” section that renders two charts with a custom `CustomPainter`: 
@@ -545,7 +560,7 @@ The detail view contains a “Stroke Analysis” section that renders two charts
 - Cumulative stroke count over time (slight S-curve). 
 
 This implementation uses canvas drawing primitives directly rather than a charting package, giving full control over layout, labels, fill, and styling. 
-![Detail Analysis within post](report/detail_pots_tab.jpg)
+
 _Decision and trade-off._ `CustomPainter` provided predictable visuals and removed dependency weight. The trade-off is that interactive chart features (pan/zoom, tooltips) would require additional engineering compared with adopting an off-the-shelf chart library. 
 
 
